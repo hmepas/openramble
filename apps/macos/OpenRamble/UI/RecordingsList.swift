@@ -134,12 +134,17 @@ struct LiveLevelMeters: View {
     let isPaused: Bool
     let showsOthers: Bool
     let othersDegraded: Bool
+    var youDegraded: Bool = false
     @State private var you: [Float] = Array(repeating: 0, count: 24)
     @State private var others: [Float] = Array(repeating: 0, count: 24)
 
     var body: some View {
         VStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
-            meter("You", samples: you, color: isPaused ? .secondary : StatusColorRole.recording.color)
+            meter(
+                "You",
+                samples: you,
+                color: isPaused ? .secondary : (youDegraded ? StatusColorRole.attention.color : StatusColorRole.recording.color)
+            )
             if showsOthers {
                 meter(
                     "Others",

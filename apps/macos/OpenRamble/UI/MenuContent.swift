@@ -120,7 +120,8 @@ struct MenuContent: View {
             Text(MenuBarStatus.recordingLine(
                 isPaused: state.meetingState == .paused,
                 duration: state.liveDuration,
-                isDegraded: state.liveCaptureHealth.marksRecordingDegraded
+                isDegraded: state.liveCaptureHealth.marksRecordingDegraded,
+                microphoneMissing: state.liveMicrophoneHealth.marksRecordingDegraded
             ))
 
         case .startRecording:

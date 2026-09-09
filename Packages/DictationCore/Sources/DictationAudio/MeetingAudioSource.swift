@@ -45,4 +45,16 @@ public protocol MeetingAudioSource: Sendable {
 
     /// Stop delivering. Safe to call twice; safe to `start` again after.
     func stop()
+
+    /// Drop a pinned device and any other start-time choice that might have
+    /// produced silence, so the next `start` uses whatever is default now.
+    ///
+    /// Called when the microphone has been delivering nothing we can hear
+    /// while the other side of a call is clearly arriving — the usual cause
+    /// is a preferred input that is not the one the meeting app is using.
+    func prepareForRecovery()
+}
+
+public extension MeetingAudioSource {
+    func prepareForRecovery() {}
 }

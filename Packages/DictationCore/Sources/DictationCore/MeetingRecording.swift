@@ -126,6 +126,9 @@ public struct MeetingRecordingMetadata: Codable, Sendable, Equatable, Identifiab
     /// Index equals the channel's index in the WAV.
     public var channelLayout: [MeetingChannel]
     public var microphoneDeviceName: String?
+    /// `nil` on recordings filed before this was stored: unknown, not missing.
+    /// `false` means the microphone channel was silence for the whole take.
+    public var microphoneEverDeliveredAudio: Bool?
     public var systemAudio: SystemAudioSummary
     public var pauses: [MeetingInterval]
     public var gaps: [MeetingGap]
@@ -141,6 +144,7 @@ public struct MeetingRecordingMetadata: Codable, Sendable, Equatable, Identifiab
         sampleRate: Int = 16_000,
         channelLayout: [MeetingChannel] = [.microphone, .system],
         microphoneDeviceName: String? = nil,
+        microphoneEverDeliveredAudio: Bool? = nil,
         systemAudio: SystemAudioSummary,
         pauses: [MeetingInterval] = [],
         gaps: [MeetingGap] = [],
@@ -155,6 +159,7 @@ public struct MeetingRecordingMetadata: Codable, Sendable, Equatable, Identifiab
         self.sampleRate = sampleRate
         self.channelLayout = channelLayout
         self.microphoneDeviceName = microphoneDeviceName
+        self.microphoneEverDeliveredAudio = microphoneEverDeliveredAudio
         self.systemAudio = systemAudio
         self.pauses = pauses
         self.gaps = gaps
@@ -173,6 +178,7 @@ public struct MeetingRecordingMetadata: Codable, Sendable, Equatable, Identifiab
         channelLayout = try c.decodeIfPresent([MeetingChannel].self, forKey: .channelLayout)
             ?? [.microphone, .system]
         microphoneDeviceName = try c.decodeIfPresent(String.self, forKey: .microphoneDeviceName)
+        microphoneEverDeliveredAudio = try c.decodeIfPresent(Bool.self, forKey: .microphoneEverDeliveredAudio)
         systemAudio = try c.decodeIfPresent(SystemAudioSummary.self, forKey: .systemAudio)
             ?? SystemAudioSummary(wasRequested: false)
         pauses = try c.decodeIfPresent([MeetingInterval].self, forKey: .pauses) ?? []

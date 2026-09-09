@@ -80,7 +80,8 @@ struct OpenRambleApp: App {
                     modelState: state.modelState
                 ),
                 isRecordingMeeting: state.meetingState == .recording,
-                recordingIsDegraded: state.liveCaptureHealth.marksRecordingDegraded
+                recordingIsDegraded: state.liveCaptureHealth.marksRecordingDegraded,
+                microphoneMissing: state.liveMicrophoneHealth.marksRecordingDegraded
             )
             .task {
                 // The first launch must show the setup itself. Without this

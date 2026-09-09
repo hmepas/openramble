@@ -49,6 +49,7 @@ final class MeetingRecordingCodableTests: XCTestCase {
         XCTAssertEqual(decoded.sampleRate, 16_000)
         XCTAssertEqual(decoded.channelLayout, [.microphone, .system])
         XCTAssertFalse(decoded.systemAudio.wasRequested)
+        XCTAssertNil(decoded.microphoneEverDeliveredAudio)
         XCTAssertEqual(decoded.pauses, [])
         XCTAssertEqual(decoded.gaps, [])
         XCTAssertNil(decoded.endReason)

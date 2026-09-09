@@ -24,6 +24,18 @@ final class MenuBarStatusTests: XCTestCase {
         )
         XCTAssertEqual(MenuBarStatus.recordingLine(isPaused: false, duration: 724), "Recording — 12:04")
         XCTAssertEqual(MenuBarStatus.recordingLine(isPaused: true, duration: 724), "Paused — 12:04")
+        XCTAssertEqual(
+            MenuBarStatus.recordingLine(isPaused: false, duration: 724, isDegraded: true),
+            "Recording — 12:04 — only your microphone"
+        )
+        XCTAssertEqual(
+            MenuBarStatus.recordingLine(isPaused: false, duration: 724, microphoneMissing: true),
+            "Recording — 12:04 — not your microphone"
+        )
+        XCTAssertEqual(
+            MenuBarStatus.recordingLine(isPaused: false, duration: 724, isDegraded: true, microphoneMissing: true),
+            "Recording — 12:04 — nothing arriving"
+        )
     }
 
     /// A meeting whose other side is missing wears orange, not red: red would

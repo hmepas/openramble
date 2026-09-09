@@ -50,9 +50,17 @@ enum MenuBarStatus {
 
     /// The menu's line about a running recording. Computed when the menu is
     /// built — no clock lives in the menu bar.
-    static func recordingLine(isPaused: Bool, duration: TimeInterval, isDegraded: Bool = false) -> String {
+    static func recordingLine(
+        isPaused: Bool,
+        duration: TimeInterval,
+        isDegraded: Bool = false,
+        microphoneMissing: Bool = false
+    ) -> String {
         let line = "\(isPaused ? "Paused" : "Recording") — \(RecordingTime.clock(duration))"
-        return isDegraded ? line + " — only your microphone" : line
+        if microphoneMissing, isDegraded { return line + " — nothing arriving" }
+        if microphoneMissing { return line + " — not your microphone" }
+        if isDegraded { return line + " — only your microphone" }
+        return line
     }
 
     /// Recording and working stay distinguishable without color through the
@@ -110,8 +118,12 @@ enum MenuBarStatus {
         isDictationReady: Bool,
         hasRecoveredWork: Bool = false,
         isRecordingMeeting: Bool = false,
-        recordingIsDegraded: Bool = false
+        recordingIsDegraded: Bool = false,
+        microphoneMissing: Bool = false
     ) -> String {
+        if isRecordingMeeting, microphoneMissing {
+            return "OpenRamble: recording — your microphone isn't being captured"
+        }
         if isRecordingMeeting, recordingIsDegraded {
             return "OpenRamble: recording — the other side isn't being captured"
         }

@@ -518,11 +518,16 @@ public final class AppState: ObservableObject {
     @Published public private(set) var isSystemAudioIntroPresented = false
     /// Whether the other side is actually arriving, refreshed once a second.
     @Published private(set) var liveCaptureHealth: CaptureHealth = .notRequested
+    /// Whether the microphone is actually arriving. Independent of the other
+    /// side: a meeting can capture others and still miss you.
+    @Published private(set) var liveMicrophoneHealth: MicrophoneHealth = .idle
     /// For the Settings row: what the app knows, never a guess.
     @Published private(set) var systemAudioPermission: SystemAudioPermissionMode = .notChecked
     private var systemAudioStartFailure: String?
+    private var microphoneStartFailure: String?
     private var liveRecordingStartedAt: ContinuousClock.Instant?
     private var lastAnnouncedHealth: String?
+    private var lastAnnouncedMicrophoneHealth: String?
 
     /// Finished dictations kept on disk, newest first, with their audio.
     @Published public private(set) var history: [HistoryEntry] = []
@@ -2359,8 +2364,10 @@ public final class AppState: ObservableObject {
 
     /// Start recording. Refuses nothing silently: a missing microphone
     /// permission asks for it and says so; a full disk says so; a microphone
-    /// that will not start says why; a tap that will not start costs the other
-    /// side and says so, never the recording.
+    /// that will not start on a voice note says why; a microphone that will
+    /// not start on a meeting costs that channel and says so, never the
+    /// recording; a tap that will not start costs the other side and says so,
+    /// never the recording.
     public func startRecording(includingSystemAudio: Bool) {
         guard meetingState == .idle, let meetingStore else { return }
         guard microphoneGranted else {
@@ -2397,9 +2404,12 @@ public final class AppState: ObservableObject {
         meetingCapture = capture
         meetingState = .starting
         systemAudioStartFailure = nil
+        microphoneStartFailure = nil
         lastAnnouncedHealth = nil
+        lastAnnouncedMicrophoneHealth = nil
         lastProbeAt = .now
         liveCaptureHealth = includingSystemAudio ? .verifying : .notRequested
+        liveMicrophoneHealth = .verifying
         beginTranscription(for: metadata.id, directory: directory)
         Task { [weak self] in
             do {
@@ -2417,6 +2427,8 @@ public final class AppState: ObservableObject {
                     guard let self else { return }
                     self.meetingCapture = nil
                     self.meetingState = .idle
+                    self.liveCaptureHealth = .notRequested
+                    self.liveMicrophoneHealth = .idle
                     self.abandonTranscription()
                     // Nothing was recorded: the directory prepared for it is
                     // not a recording anyone wants back.
@@ -2448,6 +2460,7 @@ public final class AppState: ObservableObject {
                 let summary = try await capture.stop()
                 metadata.duration = summary.duration
                 metadata.microphoneDeviceName = summary.microphoneDeviceName
+                metadata.microphoneEverDeliveredAudio = summary.microphoneEverDeliveredAudio
                 metadata.systemAudio = summary.systemAudio
                 metadata.gaps = summary.gaps
                 metadata.pauses = summary.pauses
@@ -2471,6 +2484,7 @@ public final class AppState: ObservableObject {
                 self.liveLevels = .silent
                 self.liveRecordingStartedAt = nil
                 self.liveCaptureHealth = .notRequested
+                self.liveMicrophoneHealth = .idle
                 self.meetingState = .idle
                 if metadata.systemAudio.wasRequested {
                     self.defaults.set(
@@ -2821,10 +2835,12 @@ public final class AppState: ObservableObject {
             // that follows says why.
             stopRecording()
         case let .microphone(reason):
-            notify(DictationNotice(
-                kind: .warning,
-                message: "The microphone stopped (\(Self.describe(reason))). The recording continues on the default microphone."
-            ))
+            microphoneStartFailure = Self.describe(reason)
+            let isMeeting = liveRecording?.isMeeting == true || liveCaptureHealth != .notRequested
+            let message = isMeeting
+                ? "Your microphone isn't being captured (\(Self.describe(reason))). The other side is still being recorded."
+                : "The microphone stopped (\(Self.describe(reason)))."
+            notify(DictationNotice(kind: .warning, message: message))
         case let .systemAudio(reason):
             systemAudioStartFailure = Self.describe(reason)
             notify(DictationNotice(
@@ -2896,34 +2912,52 @@ public final class AppState: ObservableObject {
         liveDurationTimer = timer
     }
 
-    /// Is the other side arriving? Announced when the answer changes — a
+    /// Is each side arriving? Announced when the answer changes — a
     /// blind person cannot see a meter that stopped moving, and this is the
     /// one thing about a meeting recorder that must not be discovered
     /// afterwards.
     private func refreshCaptureHealth(_ capture: any MeetingCapturing) async {
         guard let live = liveRecording else { return }
-        let health = await capture.health(of: .system)
+        let systemChannel = await capture.health(of: .system)
+        let microphoneChannel = await capture.health(of: .microphone)
         let elapsed = liveRecordingStartedAt.map { started -> TimeInterval in
             let duration = started.duration(to: .now)
             return Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
         } ?? 0
-        let next = CaptureHealth.make(
+        let now = ContinuousClock.now
+        let nextSystem = CaptureHealth.make(
             isSupported: SystemAudioAvailability.isSupported,
             requested: live.systemAudio.wasRequested,
             startFailure: systemAudioStartFailure,
             elapsed: elapsed,
-            health: health,
-            now: .now
+            health: systemChannel,
+            now: now
         )
-        if case .unheard = next, lastProbeAt.map({ $0.duration(to: .now) >= .seconds(10) }) ?? true {
+        let nextMicrophone = MicrophoneHealth.make(
+            startFailure: microphoneStartFailure,
+            elapsed: elapsed,
+            health: microphoneChannel,
+            now: now
+        )
+        if case .unheard = nextSystem, lastProbeAt.map({ $0.duration(to: .now) >= .seconds(10) }) ?? true {
             lastProbeAt = .now
             playSystemAudioProbe()
         }
-        guard next != liveCaptureHealth else { return }
-        liveCaptureHealth = next
-        if let announcement = next.announcement, announcement != lastAnnouncedHealth {
+        if case .unheard = nextMicrophone {
+            await capture.recoverMicrophone()
+        }
+        if nextMicrophone != liveMicrophoneHealth {
+            liveMicrophoneHealth = nextMicrophone
+            if let announcement = nextMicrophone.announcement, announcement != lastAnnouncedMicrophoneHealth {
+                lastAnnouncedMicrophoneHealth = announcement
+                announcer.announce(announcement, urgent: true)
+            }
+        }
+        guard nextSystem != liveCaptureHealth else { return }
+        liveCaptureHealth = nextSystem
+        if let announcement = nextSystem.announcement, announcement != lastAnnouncedHealth {
             lastAnnouncedHealth = announcement
-            announcer.announce(announcement, urgent: next.role == .attention)
+            announcer.announce(announcement, urgent: nextSystem.role == .attention)
         }
     }
 

@@ -118,3 +118,85 @@ enum CaptureHealth: Equatable {
         }
     }
 }
+
+/// Whether the microphone is actually being recorded.
+///
+/// The same inference as `CaptureHealth`, for the other channel. A second
+/// `AVAudioEngine` tap — and a HAL I/O proc on a hogged device — fail by
+/// succeeding: `start()` returns, buffers of zeros arrive, and the file
+/// grows. There is no error. The only evidence is sound, and an inference
+/// belongs in a table with tests, not in a view.
+enum MicrophoneHealth: Equatable {
+    /// Not recording.
+    case idle
+    /// Just started; silence for a moment is not yet a failure.
+    case verifying
+    /// Sound was arriving `secondsSinceSound` ago.
+    case capturing(secondsSinceSound: TimeInterval)
+    /// Never a sample above the audible floor.
+    case unheard(elapsed: TimeInterval)
+    /// Sound arrived, then stopped for longer than a pause.
+    case wentSilent(secondsSinceSound: TimeInterval)
+    /// The source could not be started at all.
+    case unavailable(reason: String)
+
+    static let graceSeconds: TimeInterval = CaptureHealth.probeGraceSeconds
+    static let worrySeconds: TimeInterval = CaptureHealth.worrySeconds
+
+    static func make(
+        startFailure: String?,
+        elapsed: TimeInterval,
+        health: MeetingCapture.ChannelHealth,
+        now: ContinuousClock.Instant
+    ) -> MicrophoneHealth {
+        if let startFailure { return .unavailable(reason: startFailure) }
+        if let lastAudible = health.lastAudibleAt {
+            let since = seconds(from: lastAudible, to: now)
+            return since >= worrySeconds ? .wentSilent(secondsSinceSound: since) : .capturing(secondsSinceSound: since)
+        }
+        return elapsed < graceSeconds ? .verifying : .unheard(elapsed: elapsed)
+    }
+
+    private static func seconds(from instant: ContinuousClock.Instant, to now: ContinuousClock.Instant) -> TimeInterval {
+        let duration = instant.duration(to: now)
+        return Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
+    }
+
+    var marksRecordingDegraded: Bool {
+        switch self {
+        case .unheard, .unavailable, .wentSilent: return true
+        case .idle, .verifying, .capturing: return false
+        }
+    }
+
+    var title: String? {
+        switch self {
+        case .idle, .verifying, .capturing: return nil
+        case .unheard, .unavailable: return "Your microphone isn't being captured"
+        case let .wentSilent(seconds): return "Your microphone went quiet \(RecordingTime.brief(seconds)) ago"
+        }
+    }
+
+    var detail: String? {
+        switch self {
+        case .idle, .verifying, .capturing:
+            return nil
+        case .unheard:
+            return "Nothing is arriving from your microphone. Another app may have exclusive access, or this input is silent. The other side is still being recorded."
+        case .wentSilent:
+            return "Sound was arriving earlier. The selected input may have changed, or another app may have taken the microphone."
+        case let .unavailable(reason):
+            return reason
+        }
+    }
+
+    /// Capturing is the expected state — do not announce it. The missing
+    /// microphone is the thing a blind person cannot see on a meter.
+    var announcement: String? {
+        switch self {
+        case .unheard: return "Your microphone is not being captured."
+        case .wentSilent: return "Your microphone went quiet."
+        case .idle, .verifying, .capturing, .unavailable: return nil
+        }
+    }
+}

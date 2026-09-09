@@ -941,6 +941,12 @@ final class FakeMeetingCapture: MeetingCapturing, @unchecked Sendable {
     private var onSegment: (@Sendable (MeetingSegmentRef) -> Void)?
     /// What `health(of: .system)` reports.
     var systemHealth = MeetingCapture.ChannelHealth.none
+    /// What `health(of: .microphone)` reports. Default is a working mic so
+    /// existing tests of the other side do not also look like a dead You.
+    var microphoneHealth = MeetingCapture.ChannelHealth(
+        everDeliveredBuffers: true, everDeliveredAudio: true, lastBlockAt: .now, lastAudibleAt: .now
+    )
+    private(set) var recoverCount = 0
     /// What `stop()` reports.
     var frames = 32_000
     var endReason: MeetingEndReason = .stoppedByUser
@@ -955,7 +961,11 @@ final class FakeMeetingCapture: MeetingCapturing, @unchecked Sendable {
     }
 
     func health(of channel: MeetingChannel) async -> MeetingCapture.ChannelHealth {
-        lock.withLock { channel == .system ? systemHealth : .none }
+        lock.withLock { channel == .system ? systemHealth : microphoneHealth }
+    }
+
+    func recoverMicrophone() async {
+        lock.withLock { recoverCount += 1 }
     }
 
     /// Hand the app a stretch of the file, as the real recorder would.
@@ -994,6 +1004,8 @@ final class FakeMeetingCapture: MeetingCapturing, @unchecked Sendable {
                 frameCount: frames,
                 duration: Double(frames) / 16_000,
                 microphoneDeviceName: "Fake Microphone",
+                microphoneEverDeliveredBuffers: microphoneHealth.everDeliveredBuffers,
+                microphoneEverDeliveredAudio: microphoneHealth.everDeliveredAudio,
                 systemAudio: SystemAudioSummary(
                     wasRequested: includeSystemAudio ?? false,
                     everDeliveredBuffers: systemHealth.everDeliveredBuffers,

@@ -71,6 +71,12 @@ for the check.
     silence. Confirm the orange strip, the menu-bar badge, the flat Others meter,
     and the VoiceOver announcement after a minute; the recording must continue
     and file as degraded rather than stop.
+15b. Join a Zoom, Meet, Teams or FaceTime call, then start a recording. Confirm
+    the You meter moves when you speak and that the finished file has your voice
+    on the left. If another app has exclusive microphone access, confirm the
+    orange strip says your microphone isn't being captured, the menu line says
+    "not your microphone", and the filed recording carries that note — rather
+    than a healthy-looking file of only the other side.
 16. Deny System Audio Recording, then grant it in System Settings while the app
     runs. Confirm the app says a relaunch is needed rather than claiming to
     capture, and that it captures after relaunching. On macOS 14.0 or 14.1

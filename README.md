@@ -92,7 +92,9 @@ capture your microphone only, and the app says so. A quarter second of an
 inaudible 50 Hz tone is played when such a recording starts — it is how the
 app learns, within three seconds, whether the other side is actually being
 captured, because macOS gives no other way to tell a working tap from a
-denied one.
+denied one. The microphone is judged the same way: if it starts and delivers
+silence, the recording says your voice was not captured, rather than looking
+finished and healthy.
 
 The global event monitor compares key events with the selected hotkey and
 Escape. It does not log, store, or transmit unrelated keystrokes. Input

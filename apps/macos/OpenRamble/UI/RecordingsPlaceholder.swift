@@ -94,10 +94,22 @@ struct RecordingsPlaceholder: Equatable {
         }
     }
 
-    /// The line a meeting carries forever when the other side never arrived.
+    /// The line a recording carries forever when a requested side never arrived.
     static func degradedNote(for recording: MeetingRecordingMetadata) -> String? {
-        guard recording.systemAudio.wasRequested, !recording.systemAudio.everDeliveredAudio else { return nil }
-        return "Only your microphone was recorded. The other side of this call was not captured."
+        let microphoneMissing = recording.microphoneEverDeliveredAudio == false
+        let othersMissing = recording.systemAudio.wasRequested && !recording.systemAudio.everDeliveredAudio
+        switch (microphoneMissing, othersMissing) {
+        case (true, true):
+            return "Neither your microphone nor the other side of this call was captured."
+        case (true, false):
+            return recording.systemAudio.wasRequested
+                ? "The other side of this call was recorded. Your microphone was not captured."
+                : "Your microphone was not captured."
+        case (false, true):
+            return "Only your microphone was recorded. The other side of this call was not captured."
+        case (false, false):
+            return nil
+        }
     }
 
     /// The title a recording shows when the person has not given it one.

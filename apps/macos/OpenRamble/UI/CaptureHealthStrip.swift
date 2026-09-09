@@ -10,48 +10,73 @@ struct CaptureHealthStrip: View {
     @ObservedObject var state: AppState
 
     var body: some View {
-        if let title = state.liveCaptureHealth.title {
-            VStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
-                HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.inline) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(StatusColorRole.attention.color)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.callout.weight(.medium))
-                        if let detail = state.liveCaptureHealth.detail {
-                            Text(detail)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+        let microphoneTitle = state.liveMicrophoneHealth.title
+        let systemTitle = state.liveCaptureHealth.title
+        if microphoneTitle != nil || systemTitle != nil {
+            VStack(alignment: .leading, spacing: GlassTokens.Space.stack) {
+                if let title = microphoneTitle {
+                    card(
+                        title: title,
+                        detail: state.liveMicrophoneHealth.detail,
+                        systemUnheardActions: false
+                    )
                 }
-                if case .unheard = state.liveCaptureHealth {
-                    HStack(spacing: GlassTokens.Space.inline) {
-                        Button("Open System Settings") { state.openSystemAudioSettings() }
-                        Button("Relaunch OpenRamble") { state.relaunchForSystemAudio() }
-                            .disabled(state.isRecordingInProgress)
-                            .help(state.isRecordingInProgress
-                                ? "Finish the current recording first — relaunching now would end it."
-                                : "Relaunch so macOS applies the permission to the new process")
-                    }
-                    .controlSize(.small)
-                    if state.isRecordingInProgress {
-                        // A dead button without a reason is where setup ends
-                        // for a blind person.
-                        Text("Finish the current recording first — relaunching now would end it.")
+                if let title = systemTitle {
+                    card(
+                        title: title,
+                        detail: state.liveCaptureHealth.detail,
+                        systemUnheardActions: {
+                            if case .unheard = state.liveCaptureHealth { return true }
+                            return false
+                        }()
+                    )
+                }
+            }
+            .padding(.horizontal, GlassTokens.Space.page)
+            .padding(.top, GlassTokens.Space.stack)
+        }
+    }
+
+    @ViewBuilder
+    private func card(title: String, detail: String?, systemUnheardActions: Bool) -> some View {
+        VStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
+            HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.inline) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(StatusColorRole.attention.color)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.callout.weight(.medium))
+                    if let detail {
+                        Text(detail)
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            .padding(GlassTokens.Space.stack)
-            .contentSurface(RoundedRectangle(cornerRadius: GlassTokens.Radius.control, style: .continuous))
-            .padding(.horizontal, GlassTokens.Space.page)
-            .padding(.top, GlassTokens.Space.stack)
-            .accessibilityElement(children: .contain)
+            if systemUnheardActions {
+                HStack(spacing: GlassTokens.Space.inline) {
+                    Button("Open System Settings") { state.openSystemAudioSettings() }
+                    Button("Relaunch OpenRamble") { state.relaunchForSystemAudio() }
+                        .disabled(state.isRecordingInProgress)
+                        .help(state.isRecordingInProgress
+                            ? "Finish the current recording first — relaunching now would end it."
+                            : "Relaunch so macOS applies the permission to the new process")
+                }
+                .controlSize(.small)
+                if state.isRecordingInProgress {
+                    // A dead button without a reason is where setup ends
+                    // for a blind person.
+                    Text("Finish the current recording first — relaunching now would end it.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
         }
+        .padding(GlassTokens.Space.stack)
+        .contentSurface(RoundedRectangle(cornerRadius: GlassTokens.Radius.control, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 }
 

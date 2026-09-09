@@ -72,6 +72,8 @@ public actor MeetingCapture {
         public let frameCount: Int
         public let duration: TimeInterval
         public let microphoneDeviceName: String?
+        public let microphoneEverDeliveredBuffers: Bool
+        public let microphoneEverDeliveredAudio: Bool
         public let systemAudio: SystemAudioSummary
         public let gaps: [MeetingGap]
         public let pauses: [MeetingInterval]
@@ -81,6 +83,8 @@ public actor MeetingCapture {
             frameCount: Int,
             duration: TimeInterval,
             microphoneDeviceName: String?,
+            microphoneEverDeliveredBuffers: Bool = false,
+            microphoneEverDeliveredAudio: Bool = false,
             systemAudio: SystemAudioSummary,
             gaps: [MeetingGap],
             pauses: [MeetingInterval],
@@ -89,6 +93,8 @@ public actor MeetingCapture {
             self.frameCount = frameCount
             self.duration = duration
             self.microphoneDeviceName = microphoneDeviceName
+            self.microphoneEverDeliveredBuffers = microphoneEverDeliveredBuffers
+            self.microphoneEverDeliveredAudio = microphoneEverDeliveredAudio
             self.systemAudio = systemAudio
             self.gaps = gaps
             self.pauses = pauses
@@ -114,6 +120,7 @@ public actor MeetingCapture {
     private var pauses: [MeetingInterval] = []
     private var pausedAt: Date?
     private var endReason: MeetingEndReason?
+    private var microphoneRecoveryAttempted = false
 
     /// - Parameters:
     ///   - directory: where `audio.wav` and `peaks.bin` go; created if needed.
@@ -231,11 +238,14 @@ public actor MeetingCapture {
         // kept, and the reason travels in the summary rather than as a thrown
         // error that would lose the rest of it.
         let reason = endReason ?? (result.error == nil ? .stoppedByUser : .writeFailed)
+        let microphoneHealth = pipeline.health(of: .microphone)
         let systemHealth = pipeline.health(of: .system)
         let summary = Summary(
             frameCount: result.frameCount,
             duration: Double(result.frameCount) / Double(MeetingWriter.sampleRate),
             microphoneDeviceName: microphone.deviceName,
+            microphoneEverDeliveredBuffers: microphoneHealth.everDeliveredBuffers,
+            microphoneEverDeliveredAudio: microphoneHealth.everDeliveredAudio,
             systemAudio: SystemAudioSummary(
                 wasRequested: systemAudio != nil,
                 everDeliveredBuffers: systemHealth.everDeliveredBuffers,
@@ -266,7 +276,13 @@ public actor MeetingCapture {
                 }
             )
         } catch let failure as MeetingSourceFailure {
-            throw Failure.microphone(failure)
+            // A meeting still has the other side. Aborting would throw away
+            // everyone else because our microphone would not start — which is
+            // exactly the case where keeping the recording matters. A voice
+            // note has no other side, so the microphone is the recording.
+            if systemAudio == nil { throw Failure.microphone(failure) }
+            pipeline.markDown(.microphone, reason: .microphoneUnavailable)
+            onFailure(.microphone(failure))
         }
         guard let systemAudio else { return }
         do {
@@ -290,6 +306,32 @@ public actor MeetingCapture {
     private func stopSources() {
         microphone.stop()
         systemAudio?.stop()
+    }
+
+    /// The microphone has been delivering silence while the rest of the
+    /// recording is clearly alive. Stop it, drop a pinned device, and start
+    /// again on the default input. Once per recording: a second attempt
+    /// that also hears nothing is a fact, not a loop.
+    public func recoverMicrophone() {
+        guard state == .recording else { return }
+        guard !microphoneRecoveryAttempted else { return }
+        microphoneRecoveryAttempted = true
+        microphone.stop()
+        pipeline.markDown(.microphone, reason: .microphoneUnavailable)
+        microphone.prepareForRecovery()
+        do {
+            try microphone.start(
+                onBlock: { [pipeline] in pipeline.ingest(.microphone, $0) },
+                onFailure: { [weak self] failure in
+                    guard let self else { return }
+                    Task { await self.sourceFailed(.microphone, failure) }
+                }
+            )
+        } catch let error as MeetingSourceFailure {
+            onFailure(.microphone(error))
+        } catch {
+            onFailure(.microphone(.startFailed(String(describing: error))))
+        }
     }
 
     private func sourceFailed(_ channel: MeetingChannel, _ failure: MeetingSourceFailure) {

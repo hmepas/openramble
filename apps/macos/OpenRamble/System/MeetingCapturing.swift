@@ -16,6 +16,7 @@ public protocol MeetingCapturing: Sendable {
     var frameCount: Int { get async }
     var state: MeetingCapture.State { get async }
     func health(of channel: MeetingChannel) async -> MeetingCapture.ChannelHealth
+    func recoverMicrophone() async
 }
 
 extension MeetingCapture: MeetingCapturing {}

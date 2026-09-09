@@ -83,4 +83,60 @@ final class CaptureHealthTests: XCTestCase {
         ]
         for state in states { XCTAssertNotEqual(state.role, .recording, "\(state)") }
     }
+
+    func testASilentMicrophoneAfterTheGraceIsUnheard() {
+        let silent = MeetingCapture.ChannelHealth(
+            everDeliveredBuffers: true, everDeliveredAudio: false, lastBlockAt: now
+        )
+        XCTAssertEqual(
+            MicrophoneHealth.make(startFailure: nil, elapsed: 1, health: silent, now: now),
+            .verifying
+        )
+        let unheard = MicrophoneHealth.make(startFailure: nil, elapsed: 3.5, health: silent, now: now)
+        XCTAssertEqual(unheard, .unheard(elapsed: 3.5))
+        XCTAssertEqual(unheard.title, "Your microphone isn't being captured")
+        XCTAssertTrue(unheard.marksRecordingDegraded)
+        XCTAssertEqual(unheard.announcement, "Your microphone is not being captured.")
+        XCTAssertTrue(unheard.detail?.contains("exclusive") ?? false)
+    }
+
+    func testAHeardMicrophoneIsCapturingAndSilenceHasToAge() {
+        let heard = MeetingCapture.ChannelHealth(
+            everDeliveredBuffers: true,
+            everDeliveredAudio: true,
+            lastBlockAt: now,
+            lastAudibleAt: now - .seconds(0.1)
+        )
+        XCTAssertEqual(
+            MicrophoneHealth.make(startFailure: nil, elapsed: 2, health: heard, now: now),
+            .capturing(secondsSinceSound: 0.1)
+        )
+        XCTAssertNil(MicrophoneHealth.capturing(secondsSinceSound: 0.1).title)
+        XCTAssertNil(MicrophoneHealth.capturing(secondsSinceSound: 0.1).announcement)
+        let quiet = MeetingCapture.ChannelHealth(
+            everDeliveredBuffers: true,
+            everDeliveredAudio: true,
+            lastBlockAt: now,
+            lastAudibleAt: now - .seconds(45)
+        )
+        XCTAssertEqual(
+            MicrophoneHealth.make(startFailure: nil, elapsed: 600, health: quiet, now: now),
+            .capturing(secondsSinceSound: 45)
+        )
+    }
+
+    func testAMicrophoneStartFailureIsUnavailableImmediately() {
+        let state = MicrophoneHealth.make(
+            startFailure: "another app has exclusive access to the microphone",
+            elapsed: 0,
+            health: .none,
+            now: now
+        )
+        XCTAssertEqual(
+            state,
+            .unavailable(reason: "another app has exclusive access to the microphone")
+        )
+        XCTAssertTrue(state.marksRecordingDegraded)
+        XCTAssertEqual(state.detail, "another app has exclusive access to the microphone")
+    }
 }

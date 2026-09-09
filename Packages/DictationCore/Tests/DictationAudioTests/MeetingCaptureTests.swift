@@ -10,6 +10,7 @@ final class ScriptedAudioSource: MeetingAudioSource, @unchecked Sendable {
     private var onFailure: (@Sendable (MeetingSourceFailure) -> Void)?
     private(set) var startCount = 0
     private(set) var stopCount = 0
+    private(set) var recoveryCount = 0
     /// Thrown by the next `start`, as a tap without permission would not —
     /// but a tap on a Mac too old for taps, or one Core Audio refuses, does.
     var startError: MeetingSourceFailure?
@@ -52,6 +53,12 @@ final class ScriptedAudioSource: MeetingAudioSource, @unchecked Sendable {
         let handler = onFailure
         lock.unlock()
         handler?(failure)
+    }
+
+    func prepareForRecovery() {
+        lock.lock()
+        recoveryCount += 1
+        lock.unlock()
     }
 }
 
@@ -151,6 +158,25 @@ final class MeetingCaptureTests: XCTestCase {
         let health = await capture.health(of: .system)
         XCTAssertNotNil(health.lastBlockAt)
         XCTAssertNil(health.lastAudibleAt)
+    }
+
+    func testASilentMicrophoneIsAliveButNotAudible() async throws {
+        let microphone = ScriptedAudioSource()
+        let system = ScriptedAudioSource()
+        let capture = MeetingCapture(directory: directory, microphone: microphone, systemAudio: system, probe: {})
+        try await capture.start()
+        microphone.deliver(constant(0, 1_600))
+        system.deliver(constant(0.3, 1_600))
+        let summary = try await capture.stop()
+        XCTAssertTrue(summary.microphoneEverDeliveredBuffers, "buffers arrived — the engine is alive")
+        XCTAssertFalse(summary.microphoneEverDeliveredAudio, "but the person was not in them")
+        XCTAssertTrue(summary.systemAudio.everDeliveredAudio)
+        let health = await capture.health(of: .microphone)
+        XCTAssertNotNil(health.lastBlockAt)
+        XCTAssertNil(health.lastAudibleAt)
+        let audio = try readChannels(await capture.audioURL)
+        XCTAssertEqual(audio.left[100], 0, accuracy: 0.001)
+        XCTAssertEqual(audio.right[100], 0.3, accuracy: 0.001)
     }
 
     func testHostTimedBlocksFromTwoClocksStayAligned() async throws {
@@ -435,6 +461,60 @@ extension MeetingCaptureTests {
         XCTAssertTrue(summary.systemAudio.wasRequested)
         XCTAssertFalse(summary.systemAudio.everDeliveredBuffers)
         XCTAssertEqual(summary.gaps.map(\.channel), [.system], "the missing side is a gap for the whole recording")
+    }
+
+    func testAMicrophoneThatCannotStartOnAMeetingLeavesTheOtherSideRecording() async throws {
+        let microphone = ScriptedAudioSource()
+        let system = ScriptedAudioSource()
+        microphone.startError = .startFailed("another app has exclusive access to the microphone")
+        let failures = UncheckedBox<[MeetingCapture.Failure]>([])
+        let capture = MeetingCapture(
+            directory: directory.appending(path: "mic-down", directoryHint: .isDirectory),
+            microphone: microphone,
+            systemAudio: system,
+            onFailure: { failures.value.append($0) },
+            probe: {}
+        )
+        try await capture.start()
+        let started = await capture.state
+        XCTAssertEqual(started, .recording, "the other side records regardless")
+        XCTAssertEqual(
+            failures.value,
+            [.microphone(.startFailed("another app has exclusive access to the microphone"))]
+        )
+        system.deliver(constant(0.5, 1_600))
+        let summary = try await capture.stop()
+        XCTAssertEqual(summary.frameCount, 1_600)
+        XCTAssertFalse(summary.microphoneEverDeliveredAudio)
+        XCTAssertTrue(summary.systemAudio.everDeliveredAudio)
+        XCTAssertEqual(summary.gaps.map(\.channel), [.microphone])
+    }
+
+    func testAMicrophoneThatCannotStartOnAVoiceNoteRefusesToStart() async throws {
+        let microphone = ScriptedAudioSource()
+        microphone.startError = .startFailed("unavailable")
+        let capture = MeetingCapture(directory: directory, microphone: microphone, systemAudio: nil)
+        await XCTAssertThrowsErrorAsync(try await capture.start()) { error in
+            XCTAssertEqual(error as? MeetingCapture.Failure, .microphone(.startFailed("unavailable")))
+        }
+    }
+
+    func testRecoveringTheMicrophoneRestartsItOnceOnTheDefaultDevice() async throws {
+        let microphone = ScriptedAudioSource()
+        let capture = MeetingCapture(directory: directory, microphone: microphone, systemAudio: nil)
+        try await capture.start()
+        microphone.deliver(constant(0, 1_600))
+        await capture.recoverMicrophone()
+        XCTAssertEqual(microphone.recoveryCount, 1)
+        XCTAssertEqual(microphone.startCount, 2)
+        XCTAssertEqual(microphone.stopCount, 1)
+        microphone.deliver(constant(0.5, 1_600))
+        await capture.recoverMicrophone()
+        XCTAssertEqual(microphone.recoveryCount, 1, "a second recovery is a no-op")
+        XCTAssertEqual(microphone.startCount, 2)
+        let summary = try await capture.stop()
+        XCTAssertTrue(summary.microphoneEverDeliveredAudio)
+        XCTAssertEqual(summary.gaps.map(\.reason), [.microphoneUnavailable])
     }
 }
 

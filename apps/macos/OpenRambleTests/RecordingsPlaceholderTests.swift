@@ -56,4 +56,37 @@ final class RecordingsPlaceholderTests: XCTestCase {
         let note = MeetingRecordingMetadata(startedAt: Date(), systemAudio: SystemAudioSummary(wasRequested: false))
         XCTAssertNil(RecordingsPlaceholder.degradedNote(for: note))
     }
+
+    func testAMeetingThatMissedTheMicrophoneCarriesTheInverseNote() {
+        let meeting = MeetingRecordingMetadata(
+            startedAt: Date(),
+            microphoneEverDeliveredAudio: false,
+            systemAudio: SystemAudioSummary(wasRequested: true, everDeliveredBuffers: true, everDeliveredAudio: true)
+        )
+        XCTAssertEqual(
+            RecordingsPlaceholder.degradedNote(for: meeting),
+            "The other side of this call was recorded. Your microphone was not captured."
+        )
+        let both = MeetingRecordingMetadata(
+            startedAt: Date(),
+            microphoneEverDeliveredAudio: false,
+            systemAudio: SystemAudioSummary(wasRequested: true, everDeliveredBuffers: true, everDeliveredAudio: false)
+        )
+        XCTAssertEqual(
+            RecordingsPlaceholder.degradedNote(for: both),
+            "Neither your microphone nor the other side of this call was captured."
+        )
+        let voice = MeetingRecordingMetadata(
+            startedAt: Date(),
+            microphoneEverDeliveredAudio: false,
+            systemAudio: SystemAudioSummary(wasRequested: false)
+        )
+        XCTAssertEqual(RecordingsPlaceholder.degradedNote(for: voice), "Your microphone was not captured.")
+        let unknown = MeetingRecordingMetadata(
+            startedAt: Date(),
+            microphoneEverDeliveredAudio: nil,
+            systemAudio: SystemAudioSummary(wasRequested: true, everDeliveredBuffers: true, everDeliveredAudio: true)
+        )
+        XCTAssertNil(RecordingsPlaceholder.degradedNote(for: unknown), "old files must not look degraded")
+    }
 }

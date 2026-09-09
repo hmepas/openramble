@@ -218,7 +218,8 @@ struct LiveRecordingDetail: View {
                     levels: state.liveLevels,
                     isPaused: state.meetingState == .paused,
                     showsOthers: state.liveRecording?.isMeeting ?? false,
-                    othersDegraded: state.liveCaptureHealth.marksRecordingDegraded
+                    othersDegraded: state.liveCaptureHealth.marksRecordingDegraded,
+                    youDegraded: state.liveMicrophoneHealth.marksRecordingDegraded
                 )
                 .frame(maxWidth: 300, minHeight: (state.liveRecording?.isMeeting ?? false) ? 52 : 28)
                 Spacer()
@@ -231,7 +232,9 @@ struct LiveRecordingDetail: View {
             .padding(.bottom, GlassTokens.Space.stack)
             CaptureHealthStrip(state: state)
                 .padding(.bottom, GlassTokens.Space.stack)
-            if state.liveRecording?.isMeeting ?? false, state.liveCaptureHealth.title == nil {
+            if state.liveRecording?.isMeeting ?? false,
+               state.liveCaptureHealth.title == nil,
+               state.liveMicrophoneHealth.title == nil {
                 // No processing beats this. On speakers the other side reaches
                 // the microphone and has to be told apart from the person;
                 // on headphones there is nothing to tell apart.

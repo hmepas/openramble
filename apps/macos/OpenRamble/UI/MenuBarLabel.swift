@@ -14,12 +14,13 @@ struct MenuBarLabel: View {
     let setupNeedsAttention: Bool
     var isRecordingMeeting = false
     var recordingIsDegraded = false
+    var microphoneMissing = false
 
     var body: some View {
         let badge = MenuBarStatus.badge(
             activity: MenuBarStatus.activity(state: state, isRecordingMeeting: isRecordingMeeting),
             needsAttention: hasRecoveredWork || setupNeedsAttention,
-            recordingIsDegraded: recordingIsDegraded
+            recordingIsDegraded: recordingIsDegraded || microphoneMissing
         )
 
         label(badge: badge)
@@ -30,7 +31,8 @@ struct MenuBarLabel: View {
                     isDictationReady: isDictationReady,
                     hasRecoveredWork: hasRecoveredWork,
                     isRecordingMeeting: isRecordingMeeting,
-                    recordingIsDegraded: recordingIsDegraded
+                    recordingIsDegraded: recordingIsDegraded,
+                    microphoneMissing: microphoneMissing
                 )
             )
     }

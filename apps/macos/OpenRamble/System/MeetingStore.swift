@@ -115,20 +115,6 @@ public struct MeetingStore: Sendable {
         return try? MeetingRecordingCoding.decoder().decode(type, from: data)
     }
 
-    /// Everything the recordings occupy, for the person to see and manage.
-    public func totalBytes() -> Int64 {
-        guard let enumerator = fileManager.enumerator(
-            at: root,
-            includingPropertiesForKeys: [.fileSizeKey],
-            options: [.skipsHiddenFiles]
-        ) else { return 0 }
-        var total: Int64 = 0
-        for case let url as URL in enumerator {
-            total += Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-        }
-        return total
-    }
-
     /// What one recording occupies.
     public func bytes(for id: UUID) -> Int64 {
         guard let entries = try? fileManager.contentsOfDirectory(

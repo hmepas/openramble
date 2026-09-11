@@ -218,7 +218,7 @@ struct OnboardingView: View {
                 OnboardingPermission(
                     status: PermissionStatus(
                         title: "Microphone",
-                        detail: "Hears you only while you hold the dictation key.",
+                        detail: "Hears your voice during dictation and recordings you start.",
                         granted: state.microphoneGranted
                     ),
                     action: state.requestMicrophone

@@ -50,7 +50,6 @@ final class MeetingStoreTests: XCTestCase {
 
     func testAnEmptyRootListsNothingAndOccupiesNothing() {
         XCTAssertEqual(store.list(), [])
-        XCTAssertEqual(store.totalBytes(), 0)
     }
 
     func testAPublishedRecordingIsListedNewestFirst() throws {
@@ -72,7 +71,7 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertEqual(store.list().map(\.id), [recording.id])
         XCTAssertNotNil(store.audioURL(for: recording.id))
         XCTAssertNotNil(store.peaksURL(for: recording.id))
-        XCTAssertGreaterThan(store.totalBytes(), 6_400)
+        XCTAssertGreaterThan(store.bytes(for: recording.id), 6_400)
     }
 
     func testStrayFilesAndDirectoriesInTheRootAreIgnored() throws {

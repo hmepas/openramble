@@ -68,4 +68,44 @@ final class AppStateMicrophoneHealthTests: XCTestCase {
         )
         XCTAssertEqual(state.liveMicrophoneHealth, .idle)
     }
+
+    func testPauseDoesNotPollStoppedSourcesOrAnnounceExpectedSilence() async throws {
+        let harness = try makeHarness()
+        defer { harness.tearDown() }
+        let healthy = MeetingCapture.ChannelHealth(
+            everDeliveredBuffers: true, everDeliveredAudio: true, lastBlockAt: .now, lastAudibleAt: .now
+        )
+        harness.meetingCapture.microphoneHealth = healthy
+        harness.meetingCapture.systemHealth = healthy
+        let state = harness.makeState()
+        state.startRecording(includingSystemAudio: true)
+        try await waitUntil { state.liveDuration > 0 }
+        state.pauseRecording()
+        try await waitUntil { state.meetingState == .paused }
+        let healthReads = harness.meetingCapture.healthReadCount
+        let announcements = harness.announcer.messages
+        let stale = MeetingCapture.ChannelHealth(
+            everDeliveredBuffers: true, everDeliveredAudio: true,
+            lastBlockAt: .now - .seconds(90), lastAudibleAt: .now - .seconds(90)
+        )
+        harness.meetingCapture.microphoneHealth = stale
+        harness.meetingCapture.systemHealth = stale
+        try await Task.sleep(for: .milliseconds(1_200))
+        XCTAssertEqual(harness.meetingCapture.healthReadCount, healthReads, "paused sources need no polling")
+        XCTAssertFalse(state.liveMicrophoneHealth.marksRecordingDegraded)
+        XCTAssertFalse(state.liveCaptureHealth.marksRecordingDegraded)
+        XCTAssertEqual(harness.announcer.messages, announcements, "a requested pause is not a failed microphone")
+
+        let resumed = MeetingCapture.ChannelHealth(
+            everDeliveredBuffers: true, everDeliveredAudio: true, lastBlockAt: .now, lastAudibleAt: .now
+        )
+        harness.meetingCapture.microphoneHealth = resumed
+        harness.meetingCapture.systemHealth = resumed
+        harness.meetingCapture.frames += 16_000
+        state.resumeRecording()
+        try await waitUntil { state.liveDuration == 3 }
+        XCTAssertGreaterThan(harness.meetingCapture.healthReadCount, healthReads)
+        state.stopRecording()
+        try await waitUntil { state.meetingState == .idle }
+    }
 }

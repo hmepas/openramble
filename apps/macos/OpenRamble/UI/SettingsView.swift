@@ -157,7 +157,7 @@ private struct GeneralSettings: View {
             } header: {
                 Text("Shortcut")
             } footer: {
-                Text("Hold to talk, or double-press for hands-free dictation. Press once more to finish. ⇧⌘R starts and stops a recording; the same keys still reach the app in front, so a browser will also reload from origin.")
+                Text("Hold the dictation key to speak, or double-press for hands-free dictation. Press once more to finish. The recording shortcut starts and stops a recording; it also reaches the app in front.")
             }
 
             Section("Behavior") {
@@ -314,7 +314,7 @@ private struct GeneralSettings: View {
                 PermissionRow(
                     status: PermissionStatus(
                         title: "Microphone",
-                        detail: "Hears you only while you hold the dictation key.",
+                        detail: "Hears your voice during dictation and recordings you start.",
                         granted: state.microphoneGranted
                     ),
                     action: state.requestMicrophone

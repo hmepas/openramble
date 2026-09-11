@@ -46,6 +46,13 @@ final class MenuBarStatusTests: XCTestCase {
         XCTAssertEqual(MenuBarStatus.badge(activity: .working, recordingIsDegraded: true), .working)
     }
 
+    func testAPausedRecordingDoesNotClaimToBeCapturingOneSide() {
+        XCTAssertEqual(
+            MenuBarStatus.recordingLine(isPaused: true, duration: 724, isDegraded: true, microphoneMissing: true),
+            "Paused — 12:04"
+        )
+    }
+
     func testScenario003() {
         let states: [DictationState] = [.idle, .preparing, .listening, .transcribing, .inserting]
 

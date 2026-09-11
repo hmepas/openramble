@@ -18,7 +18,7 @@ final class MenuSectionsTests: XCTestCase {
         recoveredText: Bool = false,
         recoveryFaulted: Bool = false,
         recents: Bool = false,
-        recording: Bool = false
+        recording: AppState.MeetingState = .idle
     ) -> [[MenuRow]] {
         MenuSections.sections(
             state: state,
@@ -26,31 +26,53 @@ final class MenuSectionsTests: XCTestCase {
             hasRecoveredText: recoveredText,
             recoveryStorageFaulted: recoveryFaulted,
             hasRecents: recents,
-            isRecording: recording
+            recordingState: recording
         )
     }
 
-    /// A running recording gets its own section right under the status line,
-    /// whatever dictation is doing — the two are orthogonal — and displaces
-    /// nothing else.
+    /// A running recording takes the place of the idle dictation hint. Active
+    /// dictation still has its own controls — the two are orthogonal.
     func testARecordingAddsItsOwnSectionWhateverDictationIsDoing() {
         XCTAssertEqual(
-            sections(recording: true),
-            [[.statusLine], [.recordingLine, .stopRecording], [.openRecordings, .settings, .quit]]
+            sections(recording: .recording),
+            [[.recordingLine, .pauseRecording, .stopRecording], [.openRecordings, .settings, .quit]]
         )
         XCTAssertFalse(
-            sections(recording: true).flatMap(\.self).contains(.startRecording),
+            sections(recording: .recording).flatMap(\.self).contains(.startRecording),
             "stop replaces start; both at once would toggle twice"
         )
         XCTAssertEqual(
-            sections(state: .listening, recording: true),
+            sections(state: .listening, recording: .recording),
             [
                 [.statusLine],
-                [.recordingLine, .stopRecording],
+                [.recordingLine, .pauseRecording, .stopRecording],
                 [.stopAndInsert, .cancelDictation],
                 [.openRecordings, .settings, .quit],
             ]
         )
+    }
+
+    func testARecordingTakesFocusAndCanBePausedFromTheMenu() {
+        let menu = sections(recording: .recording)
+        XCTAssertEqual(menu.first?.first, .recordingLine)
+        XCTAssertEqual(menu.first?.count, 3, "recording status, pause or resume, and stop")
+    }
+
+    func testAPausedRecordingCanResumeOrStopWithoutOpeningAWindow() {
+        XCTAssertEqual(sections(recording: .paused), [
+            [.recordingLine, .resumeRecording, .stopRecording], [.openRecordings, .settings, .quit],
+        ])
+    }
+
+    func testStartingAndSavingNeverOfferANonfunctionalStartButton() {
+        for recording in [AppState.MeetingState.starting, .stopping] {
+            XCTAssertEqual(sections(recording: recording), [[.recordingLine], [.openRecordings, .settings, .quit]])
+        }
+    }
+
+    func testUninsertedDictationStillNeedsAttentionWhileRecording() {
+        XCTAssertEqual(sections(recoveredText: true, recording: .paused).first, [.statusLine])
+        XCTAssertTrue(sections(recoveredText: true, recording: .paused).flatMap(\.self).contains(.insertLastDictation))
     }
 
     /// The common case: a ready, quiet app shows start-recording as its own

@@ -57,6 +57,7 @@ enum MenuBarStatus {
         microphoneMissing: Bool = false
     ) -> String {
         let line = "\(isPaused ? "Paused" : "Recording") — \(RecordingTime.clock(duration))"
+        guard !isPaused else { return line }
         if microphoneMissing, isDegraded { return line + " — nothing arriving" }
         if microphoneMissing { return line + " — not your microphone" }
         if isDegraded { return line + " — only your microphone" }

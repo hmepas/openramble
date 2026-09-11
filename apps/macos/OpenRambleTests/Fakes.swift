@@ -947,6 +947,7 @@ final class FakeMeetingCapture: MeetingCapturing, @unchecked Sendable {
         everDeliveredBuffers: true, everDeliveredAudio: true, lastBlockAt: .now, lastAudibleAt: .now
     )
     private(set) var recoverCount = 0
+    private(set) var healthReadCount = 0
     /// What `stop()` reports.
     var frames = 32_000
     var endReason: MeetingEndReason = .stoppedByUser
@@ -961,7 +962,10 @@ final class FakeMeetingCapture: MeetingCapturing, @unchecked Sendable {
     }
 
     func health(of channel: MeetingChannel) async -> MeetingCapture.ChannelHealth {
-        lock.withLock { channel == .system ? systemHealth : microphoneHealth }
+        lock.withLock {
+            healthReadCount += 1
+            return channel == .system ? systemHealth : microphoneHealth
+        }
     }
 
     func recoverMicrophone() async {

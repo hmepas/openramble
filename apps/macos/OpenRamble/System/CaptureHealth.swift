@@ -40,7 +40,7 @@ enum CaptureHealth: Equatable {
     static let worrySeconds: TimeInterval = 60
 
     /// - Parameters:
-    ///   - elapsed: seconds since the tap started.
+    ///   - elapsed: seconds since the tap started or resumed.
     ///   - health: what the recorder has received on the system channel.
     static func make(
         isSupported: Bool,
@@ -54,7 +54,9 @@ enum CaptureHealth: Equatable {
         guard requested else { return .notRequested }
         if let startFailure { return .unavailable(reason: startFailure) }
         if let lastAudible = health.lastAudibleAt {
-            let since = seconds(from: lastAudible, to: now)
+            // The sources are deliberately stopped during a pause. That
+            // wall-clock gap must not become a missing-audio warning on resume.
+            let since = min(elapsed, seconds(from: lastAudible, to: now))
             return since >= worrySeconds ? .wentSilent(secondsSinceSound: since) : .capturing(secondsSinceSound: since)
         }
         return elapsed < probeGraceSeconds ? .verifying : .unheard(elapsed: elapsed)
@@ -151,7 +153,7 @@ enum MicrophoneHealth: Equatable {
     ) -> MicrophoneHealth {
         if let startFailure { return .unavailable(reason: startFailure) }
         if let lastAudible = health.lastAudibleAt {
-            let since = seconds(from: lastAudible, to: now)
+            let since = min(elapsed, seconds(from: lastAudible, to: now))
             return since >= worrySeconds ? .wentSilent(secondsSinceSound: since) : .capturing(secondsSinceSound: since)
         }
         return elapsed < graceSeconds ? .verifying : .unheard(elapsed: elapsed)

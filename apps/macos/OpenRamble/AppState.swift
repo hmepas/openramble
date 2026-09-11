@@ -464,8 +464,6 @@ public final class AppState: ObservableObject {
     @Published public private(set) var liveDuration: TimeInterval = 0
     /// The loudest sample per channel over the last stretch, for the meters.
     @Published public private(set) var liveLevels = MeetingCapture.Levels.silent
-    /// What the recordings occupy on disk.
-    @Published public private(set) var recordingsBytes: Int64 = 0
     /// The recording that most recently ended — the window selects it.
     @Published public private(set) var lastFinishedRecordingID: UUID?
     private var meetingStore: MeetingStore?
@@ -525,6 +523,7 @@ public final class AppState: ObservableObject {
     @Published private(set) var systemAudioPermission: SystemAudioPermissionMode = .notChecked
     private var systemAudioStartFailure: String?
     private var microphoneStartFailure: String?
+    /// Current uninterrupted capture period; a requested pause is not missing audio.
     private var liveRecordingStartedAt: ContinuousClock.Instant?
     private var lastAnnouncedHealth: String?
     private var lastAnnouncedMicrophoneHealth: String?
@@ -2274,7 +2273,7 @@ public final class AppState: ObservableObject {
     // MARK: - Recordings
 
     /// The global recording shortcut: start if idle, stop if running.
-    /// Pause stays a window control — a shortcut that paused would need a
+    /// Pause stays an explicit control — a shortcut that paused would need a
     /// third press to finish, and nobody would remember which state they were in.
     private func handleRecordingShortcut() {
         switch meetingState {
@@ -2507,10 +2506,18 @@ public final class AppState: ObservableObject {
 
     public func pauseRecording() {
         guard meetingState == .recording, let capture = meetingCapture else { return }
+        let id = liveRecording?.id
         Task { [weak self] in
             do {
                 try await capture.pause()
-                await MainActor.run { self?.meetingState = .paused }
+                let frames = await capture.frameCount
+                await MainActor.run {
+                    guard let self, self.meetingState == .recording, self.liveRecording?.id == id else { return }
+                    self.meetingState = .paused
+                    self.liveDuration = Double(frames) / Double(MeetingWriter.sampleRate)
+                    self.stopLiveDurationTimer()
+                    self.liveLevels = .silent
+                }
             } catch {
                 await MainActor.run {
                     self?.notify(DictationNotice(kind: .failure, message: "Couldn't pause the recording."))
@@ -2521,10 +2528,16 @@ public final class AppState: ObservableObject {
 
     public func resumeRecording() {
         guard meetingState == .paused, let capture = meetingCapture else { return }
+        let id = liveRecording?.id
         Task { [weak self] in
             do {
                 try await capture.resume()
-                await MainActor.run { self?.meetingState = .recording }
+                await MainActor.run {
+                    guard let self, self.meetingState == .paused, self.liveRecording?.id == id else { return }
+                    self.meetingState = .recording
+                    self.liveRecordingStartedAt = .now
+                    self.startLiveDurationTimer()
+                }
             } catch {
                 await MainActor.run {
                     self?.notify(DictationNotice(kind: .failure, message: Self.recordingStartFailureMessage(error)))
@@ -2550,7 +2563,6 @@ public final class AppState: ObservableObject {
     public func reloadRecordings() {
         guard let meetingStore else { return }
         recordings = meetingStore.list()
-        recordingsBytes = meetingStore.totalBytes()
     }
 
     public func recordingAudioURL(_ id: UUID) -> URL? {
@@ -2902,8 +2914,10 @@ public final class AppState: ObservableObject {
         stopLiveDurationTimer()
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self, let capture = self.meetingCapture else { return }
+                guard let self, self.meetingState == .recording, let capture = self.meetingCapture else { return }
+                let id = self.liveRecording?.id
                 let frames = await capture.frameCount
+                guard self.meetingState == .recording, self.liveRecording?.id == id else { return }
                 self.liveDuration = Double(frames) / Double(MeetingWriter.sampleRate)
                 await self.refreshCaptureHealth(capture)
             }
@@ -2917,9 +2931,10 @@ public final class AppState: ObservableObject {
     /// one thing about a meeting recorder that must not be discovered
     /// afterwards.
     private func refreshCaptureHealth(_ capture: any MeetingCapturing) async {
-        guard let live = liveRecording else { return }
+        guard meetingState == .recording, let live = liveRecording else { return }
         let systemChannel = await capture.health(of: .system)
         let microphoneChannel = await capture.health(of: .microphone)
+        guard meetingState == .recording, liveRecording?.id == live.id else { return }
         let elapsed = liveRecordingStartedAt.map { started -> TimeInterval in
             let duration = started.duration(to: .now)
             return Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18

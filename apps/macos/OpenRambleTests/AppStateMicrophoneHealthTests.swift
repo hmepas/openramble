@@ -79,7 +79,9 @@ final class AppStateMicrophoneHealthTests: XCTestCase {
         harness.meetingCapture.systemHealth = healthy
         let state = harness.makeState()
         state.startRecording(includingSystemAudio: true)
-        try await waitUntil { state.liveDuration > 0 }
+        try await waitUntil {
+            state.liveDuration > 0 && harness.meetingCapture.healthReadCount >= 2
+        }
         state.pauseRecording()
         try await waitUntil { state.meetingState == .paused }
         let healthReads = harness.meetingCapture.healthReadCount
@@ -103,8 +105,10 @@ final class AppStateMicrophoneHealthTests: XCTestCase {
         harness.meetingCapture.systemHealth = resumed
         harness.meetingCapture.frames += 16_000
         state.resumeRecording()
-        try await waitUntil { state.liveDuration == 3 }
-        XCTAssertGreaterThan(harness.meetingCapture.healthReadCount, healthReads)
+        // The timer publishes duration before awaiting the capture-health read.
+        try await waitUntil {
+            state.liveDuration == 3 && harness.meetingCapture.healthReadCount >= healthReads + 2
+        }
         state.stopRecording()
         try await waitUntil { state.meetingState == .idle }
     }

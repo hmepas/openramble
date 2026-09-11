@@ -6,13 +6,13 @@
     <description>OpenRamble updates</description>
     <language>en</language>
     <item>
-      <title>0.27.1</title>
-      <pubDate>Wed, 09 Sep 2026 15:27:33 +0300</pubDate>
-      <sparkle:version>60</sparkle:version>
-      <sparkle:shortVersionString>0.27.1</sparkle:shortVersionString>
+      <title>0.27.2</title>
+      <pubDate>Fri, 11 Sep 2026 18:02:11 +0300</pubDate>
+      <sparkle:version>61</sparkle:version>
+      <sparkle:shortVersionString>0.27.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description>&lt;h2&gt;OpenRamble 0.27.1&lt;/h2&gt;&lt;p&gt;A meeting recording that captured the other people and missed you now says so, and it tries the microphone the way a second app on this Mac is supposed to share it.&lt;/p&gt;&lt;h2&gt;What changed&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Recording a meeting while Zoom, Meet, Teams or FaceTime already has the microphone now reads the input the same way the rest of the Mac does, instead of starting a second engine that could succeed and write silence.&lt;/li&gt;&lt;li&gt;If your voice still does not arrive, the orange strip, the You meter, the menu bar, VoiceOver, and the finished recording all say your microphone was not captured. Previously only a missing other side was treated that way.&lt;/li&gt;&lt;li&gt;After a few seconds of silence the recorder drops a pinned input and starts again on the default microphone, once.&lt;/li&gt;&lt;li&gt;A meeting whose microphone will not start still records the other side. A voice note without a microphone still refuses to start.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Recognition and transcription remain entirely local. Nothing is uploaded, and no other app is told you are recording.&lt;/p&gt;</description>
-      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.1/OpenRamble-0.27.1.dmg" length="6159068" type="application/octet-stream" sparkle:edSignature="uG2smjoqWF6qJu6RwH55e3mPwcrt8uTZYAJ1PUs2E5+a7gDqvk5d9zbi8NTulBZ9gxXHlodFB9t8tJJDQRECBg==" />
+      <description>&lt;h2&gt;A clearer recordings window&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Copy the entire transcript while a recording is still running, including the latest transcribed words.&lt;/li&gt;&lt;li&gt;Find recordings in a compact list grouped by day, without repeated Meeting labels. Recordings started within the same minute show seconds to tell them apart.&lt;/li&gt;&lt;li&gt;Control a recording from one Liquid Glass bar with its time, audio levels, pause, and a clearly labelled Stop button.&lt;/li&gt;&lt;li&gt;Read a quieter transcript with grouped source headings. Scroll back without losing your place as new words arrive, then use Jump to Latest to follow the conversation again.&lt;/li&gt;&lt;li&gt;Use Copy Transcript and More instead of a row of unexplained icons. Save, rename, recording details, Finder, and Trash are under More.&lt;/li&gt;&lt;li&gt;Play from a timestamp while keeping transcript text available for selection. Playback controls take up one compact row.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.2/OpenRamble-0.27.2.dmg" length="6726999" type="application/octet-stream" sparkle:edSignature="wYdMDNAdpGZVC6p/9RI9ljm/zpScm/EdoMndHZctMW8H6Ofv8aI7wn99UNRrE+/Btt6VjfTVSxl0yH2RpxEiBg==" />
     </item>
   </channel>
 </rss>

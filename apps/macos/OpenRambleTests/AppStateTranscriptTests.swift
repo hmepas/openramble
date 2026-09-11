@@ -172,4 +172,45 @@ final class AppStateTranscriptTests: XCTestCase {
         state.copyTranscript(filed.id)
         XCTAssertEqual(NSPasteboard.general.string(forType: .string), "You · 00:00:00\nCopied.")
     }
+
+    func testCopyDuringRecordingIncludesBothSourcesAndThePendingParagraphWithoutStopping() async throws {
+        let harness = try makeHarness()
+        defer { harness.tearDown() }
+        let recognizer = ReadinessControlledRecognizer()
+        harness.recognizer = recognizer
+        let state = harness.makeState()
+        try await waitUntil { state.isEngineReady }
+        state.startRecording()
+        try await waitUntil { state.meetingState == .recording }
+        let id = try XCTUnwrap(state.liveRecording?.id)
+        let writer = try writeSpeech(into: harness, frames: 128_000)
+
+        await recognizer.setSamplesText("First paragraph.")
+        harness.meetingCapture.emitSegment(.init(channel: .microphone, startFrame: 0, frameCount: 32_000))
+        try await waitUntil { !state.liveTranscript.isEmpty }
+        await recognizer.setSamplesText("The other side.")
+        harness.meetingCapture.emitSegment(.init(channel: .system, startFrame: 32_000, frameCount: 32_000))
+        try await waitUntil { state.liveTranscript.count == 2 }
+
+        state.copyTranscript(id)
+        let firstCopy = "You · 00:00:00\nFirst paragraph.\n\nOthers · 00:00:02\nThe other side."
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), firstCopy)
+        XCTAssertEqual(state.meetingState, .recording)
+        XCTAssertEqual(harness.meetingCapture.stopCount, 0)
+        XCTAssertEqual(harness.meetingCapture.pauseCount, 0)
+
+        await recognizer.setSamplesText("Latest words.")
+        harness.meetingCapture.emitSegment(.init(channel: .microphone, startFrame: 64_000, frameCount: 32_000))
+        try await waitUntil { state.liveTranscript.count == 3 }
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), firstCopy, "incoming text must not replace the copied snapshot")
+        state.pauseRecording()
+        try await waitUntil { state.meetingState == .paused }
+        state.copyTranscript(id)
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), firstCopy + "\n\nYou · 00:00:04\nLatest words.")
+        XCTAssertEqual(state.meetingState, .paused)
+        XCTAssertTrue(NSPasteboard.general.types?.contains(HostOnlyPasteboard.concealedType) == true)
+        try writer.finish()
+        state.stopRecording()
+        try await waitUntil { state.transcribingRecordingID == nil }
+    }
 }

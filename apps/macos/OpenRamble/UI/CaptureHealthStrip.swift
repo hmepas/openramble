@@ -96,6 +96,10 @@ struct SystemAudioIntroSheet: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Text("Headphones keep the Mac’s audio out of your microphone and help keep the two sides apart.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Cancel") { state.dismissSystemAudioIntro() }
                     .keyboardShortcut(.cancelAction)

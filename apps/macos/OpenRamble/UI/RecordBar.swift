@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// One red button. It records the microphone and, where this Mac can, what
+/// A single floating transport. It records the microphone and, where this Mac can, what
 /// the Mac plays — the other side of a call. There is no mode to choose. A
 /// chevron beside it holds one alternative for one recording; the choice is
 /// never remembered, which is what makes offering it safe.
 ///
-/// While recording, the circle becomes a square: the same button, the
-/// opposite verb. The line beneath is not a control — it says what the
-/// button will do, or what it is doing, in words.
+/// State, both sources, and controls share one glass surface. The primary
+/// action stays in the same place as it changes from Record to Stop.
 struct RecordBar: View {
     @ObservedObject var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -21,68 +20,96 @@ struct RecordBar: View {
     }
 
     var body: some View {
-        VStack(spacing: GlassTokens.Space.inline) {
-            HStack(spacing: GlassTokens.Space.stack) {
-                if isRecording {
-                    Button {
-                        if state.meetingState == .paused { state.resumeRecording() } else { state.pauseRecording() }
-                    } label: {
-                        Image(systemName: state.meetingState == .paused ? "play.fill" : "pause.fill")
-                            .font(.title3)
-                            .frame(width: 36, height: 36)
-                    }
-                    .buttonStyle(.borderless)
-                    .glassControl()
-                    .accessibilityLabel(state.meetingState == .paused ? "Resume recording" : "Pause recording")
-                    .transition(.opacity)
+        HStack(spacing: GlassTokens.Space.stack) {
+            HStack(spacing: GlassTokens.Space.inline) {
+                if isBusy {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Circle()
+                        .fill(isRecording && state.meetingState != .paused
+                            ? StatusColorRole.recording.color : Color.secondary)
+                        .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
                 }
-
+                if isRecording {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(state.meetingState == .paused ? "Paused" : "Recording")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(RecordingTime.clock(state.liveDuration))
+                            .font(.system(size: 19, weight: .medium, design: .rounded))
+                            .monospacedDigit()
+                    }
+                    .frame(minWidth: 90, alignment: .leading)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(state.meetingState == .paused ? "Paused" : "Recording")
+                    .accessibilityValue(RecordingTime.spoken(state.liveDuration))
+                } else {
+                    Text(line)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: GlassTokens.Space.inline)
+            if isRecording {
+                LiveLevelMeters(
+                    levels: state.liveLevels,
+                    isPaused: state.meetingState == .paused,
+                    showsOthers: state.liveRecording?.isMeeting ?? false,
+                    othersDegraded: state.liveCaptureHealth.marksRecordingDegraded,
+                    youDegraded: state.liveMicrophoneHealth.marksRecordingDegraded
+                )
+                Spacer(minLength: GlassTokens.Space.inline)
+                Button {
+                    if state.meetingState == .paused { state.resumeRecording() } else { state.pauseRecording() }
+                } label: {
+                    Image(systemName: state.meetingState == .paused ? "play.fill" : "pause.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help(state.meetingState == .paused ? "Resume recording" : "Pause recording")
+                .accessibilityLabel(state.meetingState == .paused ? "Resume recording" : "Pause recording")
+            }
+            HStack(spacing: 0) {
                 Button {
                     if isRecording { state.stopRecording() } else { state.startRecording() }
                 } label: {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.primary.opacity(0.18), lineWidth: 2)
-                            .frame(width: 58, height: 58)
-                        RoundedRectangle(cornerRadius: isRecording ? 5 : 26, style: .continuous)
-                            .fill(StatusColorRole.recording.color)
-                            .frame(width: isRecording ? 22 : 52, height: isRecording ? 22 : 52)
-                            .animation(reduceMotion ? nil : .easeOut(duration: GlassTokens.Motion.controlFeedback), value: isRecording)
-                    }
+                    Label(isRecording ? "Stop" : "Record", systemImage: isRecording ? "stop.fill" : "record.circle")
+                        .font(.callout.weight(.semibold))
+                        .padding(.horizontal, GlassTokens.Space.stack)
+                        .frame(height: 40)
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .disabled(isBusy)
                 .accessibilityLabel(isRecording ? "Stop recording" : "Record")
-                .accessibilityHint(isRecording ? "Ends the recording and keeps it" : "Records your microphone until you stop")
-
-                if isRecording {
-                    // Keeps the red button centred while the pause control is
-                    // shown on its left.
-                    Color.clear.frame(width: 36, height: 36)
-                } else if let alternative {
+                .accessibilityHint(isRecording ? "Ends the recording and keeps it" : line)
+                if !isRecording, let alternative {
                     Menu {
                         Button(alternative.title, action: alternative.action)
                     } label: {
                         Image(systemName: "chevron.down")
                             .font(.caption.weight(.semibold))
-                            .frame(width: 36, height: 36)
+                            .frame(width: 28, height: 40)
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
-                    .frame(width: 36, height: 36)
-                    .disabled(isBusy)
+                    .fixedSize()
+                    .padding(.trailing, 4)
                     .accessibilityLabel("Other ways to record")
-                } else {
-                    Color.clear.frame(width: 36, height: 36)
                 }
             }
-            Text(line)
-                .font(.system(size: GlassTokens.Label.footnote))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+            .foregroundStyle(.white)
+            .background(StatusColorRole.recording.color, in: Capsule())
+            .disabled(isBusy)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, GlassTokens.Space.stack)
+        .padding(.leading, GlassTokens.Space.section)
+        .padding(.trailing, GlassTokens.Space.inline)
+        .padding(.vertical, GlassTokens.Space.inline)
+        .frame(maxWidth: 920)
+        .glassSurface(Capsule())
+        .animation(reduceMotion ? nil : .easeOut(duration: GlassTokens.Motion.surfaceChange), value: isRecording)
     }
 
     /// The one alternative, for this recording only.

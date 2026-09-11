@@ -41,9 +41,13 @@ on this Mac while you record, by the same model that handles dictation; a
 dictation you start mid-recording always takes the engine first, and the
 transcript catches up after. They are not bounded by a count: a recording is a
 document, and the app does not throw documents away. About 230 MB per hour;
-the window shows the total. Deleting a recording moves it to the Trash. Recordings are
+More ▸ Recording Details shows a recording's size. Deleting a recording moves it to the Trash. Recordings are
 included in your Mac's own backups, like any document you make; the folders
 that hold transient dictation audio are not.
+
+Use Rename beside a recording's title, or right-click it in the list, to give
+it a name. Return in the list also opens Rename; Enter saves and Escape cancels.
+An empty name restores the date. The menu bar can start, pause, resume and stop a recording.
 
 Nothing leaves this Mac on its own. Copy and Save hand a transcript or a
 recording to somewhere you chose: Copy puts the transcript on this Mac's
@@ -115,7 +119,7 @@ Application data is stored under
 | Current recording | Queued for local deletion after success or explicit cancellation |
 | Recovery audio after a technical failure | Up to 10 WAV files, seven days, and 1 GiB |
 | Dictation history: transcripts and their audio | The last 5 by default (5–50 in Settings ▸ History); older entries and their recordings are deleted when they fall off |
-| Recordings: two-channel audio and their metadata | Until you delete them. Not bounded by count or age. About 230 MB per hour; the total is shown in the Recordings window |
+| Recordings: two-channel audio and their metadata | Until you delete them. Not bounded by count or age. About 230 MB per hour; each recording's size is under More ▸ Recording Details |
 | Settings and replacement dictionary | Stored in macOS defaults |
 | Text that could not be inserted | Memory only, until the next dictation or app exit |
 

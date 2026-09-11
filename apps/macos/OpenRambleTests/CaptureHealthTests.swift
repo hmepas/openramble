@@ -69,6 +69,17 @@ final class CaptureHealthTests: XCTestCase {
         XCTAssertTrue(state.marksRecordingDegraded)
     }
 
+    func testResumingDoesNotCountTheRequestedPauseAsMissingAudio() {
+        let beforePause = health(audibleSecondsAgo: 125)
+        XCTAssertEqual(make(elapsed: 2, health: beforePause), .capturing(secondsSinceSound: 2))
+        XCTAssertEqual(
+            MicrophoneHealth.make(startFailure: nil, elapsed: 2, health: beforePause, now: now),
+            .capturing(secondsSinceSound: 2)
+        )
+        XCTAssertTrue(make(elapsed: 61, health: beforePause).marksRecordingDegraded,
+                      "continued silence after resume still needs attention")
+    }
+
     func testATapThatCouldNotStartSaysWhy() {
         let state = make(failure: "the audio tap could not be created (-1)", elapsed: 0, health: health(buffers: false))
         XCTAssertEqual(state, .unavailable(reason: "the audio tap could not be created (-1)"))

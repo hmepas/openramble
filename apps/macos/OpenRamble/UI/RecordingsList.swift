@@ -6,6 +6,7 @@ import SwiftUI
 struct RecordingsList: View {
     @ObservedObject var state: AppState
     @Binding var selection: UUID?
+    let onRename: (MeetingRecordingMetadata) -> Void
 
     var body: some View {
         List(selection: $selection) {
@@ -20,6 +21,9 @@ struct RecordingsList: View {
                         RecordingRow(recording: recording, showsSeconds: group.needsSeconds(for: recording))
                             .tag(recording.id)
                             .listRowSeparator(.hidden)
+                            .contextMenu {
+                                Button("Rename…") { onRename(recording) }
+                            }
                     }
                 } header: {
                     Text(group.title)
@@ -30,6 +34,11 @@ struct RecordingsList: View {
             }
         }
         .listStyle(.sidebar)
+        .onKeyPress(.return) {
+            guard let recording = state.recordings.first(where: { $0.id == selection }) else { return .ignored }
+            onRename(recording)
+            return .handled
+        }
         .onDeleteCommand {
             guard let selection, state.recordings.contains(where: { $0.id == selection }) else { return }
             state.trashRecording(selection)

@@ -203,13 +203,13 @@ struct TranscriptStatusLine: View {
 
     private var line: (symbol: String, role: StatusColorRole, text: String)? {
         if state.isTranscriptionPaused {
-            return ("exclamationmark.triangle.fill", .attention, "Transcription stopped. The recording is still running.")
+            return ("exclamationmark.triangle.fill", .attention, "Transcription paused.")
         }
         if !state.isEngineReady {
-            return ("clock", .processing, "Waiting for the speech model. The recording is still running.")
+            return ("clock", .processing, "Waiting for the speech model.")
         }
         if state.dictationState != .idle {
-            return ("waveform", .processing, "Paused for dictation. The recording is still running.")
+            return ("waveform", .processing, "Transcription paused while you dictate.")
         }
         if state.transcriptBacklogSeconds >= TranscriptStatusPolicy.backlogVisibleAfter {
             return ("waveform", .processing, "Transcribing — about \(Int(state.transcriptBacklogSeconds.rounded())) seconds behind.")

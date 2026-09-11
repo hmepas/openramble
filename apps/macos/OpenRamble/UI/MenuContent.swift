@@ -22,7 +22,7 @@ struct MenuContent: View {
             hasRecoveredText: state.recoveredText != nil,
             recoveryStorageFaulted: state.recordingRecoveryStorageFaulted,
             hasRecents: !state.recentDictations.isEmpty,
-            isRecording: state.meetingState == .recording || state.meetingState == .paused
+            recordingState: state.meetingState
         )
 
         ForEach(Array(sections.enumerated()), id: \.offset) { index, section in
@@ -117,12 +117,17 @@ struct MenuContent: View {
 
 
         case .recordingLine:
-            Text(MenuBarStatus.recordingLine(
-                isPaused: state.meetingState == .paused,
-                duration: state.liveDuration,
-                isDegraded: state.liveCaptureHealth.marksRecordingDegraded,
-                microphoneMissing: state.liveMicrophoneHealth.marksRecordingDegraded
-            ))
+            switch state.meetingState {
+            case .starting: Text("Starting recording…")
+            case .stopping: Text("Saving recording…")
+            case .idle, .recording, .paused:
+                Text(MenuBarStatus.recordingLine(
+                    isPaused: state.meetingState == .paused,
+                    duration: state.liveDuration,
+                    isDegraded: state.liveCaptureHealth.marksRecordingDegraded,
+                    microphoneMissing: state.liveMicrophoneHealth.marksRecordingDegraded
+                ))
+            }
 
         case .startRecording:
             Button {
@@ -130,7 +135,15 @@ struct MenuContent: View {
             } label: {
                 Text(titled("Start Recording", shortcut: state.recordingShortcut))
             }
-            .accessibilityHint("Records your microphone until you stop")
+            .accessibilityHint(state.systemAudioMode == .enabled
+                ? "Records you and the other side until you stop"
+                : "Records your microphone until you stop")
+
+        case .pauseRecording:
+            Button("Pause Recording") { state.pauseRecording() }
+
+        case .resumeRecording:
+            Button("Resume Recording") { state.resumeRecording() }
 
         case .stopRecording:
             Button {

@@ -17,11 +17,14 @@ struct RecordingsWindow: View {
     @ObservedObject var state: AppState
     @StateObject private var player = RecordingPlayer()
     @State private var selection: UUID?
+    @State private var recordingToRename: MeetingRecordingMetadata?
+    @State private var renamedTitle = ""
+    @State private var showsRename = false
 
     var body: some View {
         VStack(spacing: 0) {
             NavigationSplitView {
-                RecordingsList(state: state, selection: $selection)
+                RecordingsList(state: state, selection: $selection, onRename: beginRenaming)
                     .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
                     .toolbarBackground(.visible, for: .windowToolbar)
             } detail: {
@@ -31,7 +34,7 @@ struct RecordingsWindow: View {
                     .clipped()
             }
             VStack(spacing: GlassTokens.Space.inline) {
-                if state.isRecordingInProgress { CaptureHealthStrip(state: state) }
+                if state.meetingState == .recording { CaptureHealthStrip(state: state) }
                 RecordBar(state: state)
                     .padding(.horizontal, GlassTokens.Space.stack)
                     .padding(.bottom, GlassTokens.Space.stack)
@@ -53,6 +56,17 @@ struct RecordingsWindow: View {
         }
         .onChange(of: selection) { _, id in
             if id != player.loadedID { player.pause() }
+        }
+        .alert("Rename Recording", isPresented: $showsRename, presenting: recordingToRename) { recording in
+            TextField(
+                "Name", text: $renamedTitle,
+                prompt: Text(RecordingsPlaceholder.defaultTitle(for: recording.startedAt))
+            )
+            .accessibilityLabel("Recording name")
+            Button("Cancel", role: .cancel) { }
+            Button("Save") { state.renameRecording(recording.id, title: renamedTitle) }
+        } message: { _ in
+            Text("Leave the name empty to use the date.")
         }
         .sheet(isPresented: Binding(
             get: { state.isSystemAudioIntroPresented },
@@ -87,7 +101,9 @@ struct RecordingsWindow: View {
             LiveRecordingDetail(state: state)
                 .id(live.id)
         } else if let selection, let recording = state.recordings.first(where: { $0.id == selection }) {
-            RecordingDetail(state: state, recording: recording, player: player)
+            RecordingDetail(state: state, recording: recording, player: player) {
+                beginRenaming(recording)
+            }
                 .id(recording.id)
         } else {
             RecordingsPlaceholderView(
@@ -96,6 +112,13 @@ struct RecordingsWindow: View {
                     : .nothingSelected
             )
         }
+    }
+
+    private func beginRenaming(_ recording: MeetingRecordingMetadata) {
+        selection = recording.id
+        recordingToRename = recording
+        renamedTitle = recording.title ?? ""
+        showsRename = true
     }
 }
 

@@ -26,7 +26,7 @@ struct RecordingsPlaceholder: Equatable {
     static let listening = RecordingsPlaceholder(
         symbol: "text.alignleft",
         title: "Listening",
-        detail: "Text appears after you pause."
+        detail: "Your transcript appears here as you speak."
     )
 
     static let stillTranscribing = RecordingsPlaceholder(

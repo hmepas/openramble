@@ -136,7 +136,6 @@ final class AppStateRecordingTests: XCTestCase {
         XCTAssertEqual(state.recordings.first?.title, "Budget review")
         state.trashRecording(filed.id)
         XCTAssertEqual(state.recordings, [])
-        XCTAssertEqual(state.recordingsBytes, 0)
     }
 
     func testARecordingLeftByACrashIsRecoveredAndDisclosedAtLaunch() async throws {

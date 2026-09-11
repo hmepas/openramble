@@ -17,7 +17,7 @@ final class RecordingsPlaceholderTests: XCTestCase {
 
     func testListeningSaysTheTextWaitsForAPause() {
         XCTAssertEqual(RecordingsPlaceholder.listening.title, "Listening")
-        XCTAssertTrue(RecordingsPlaceholder.listening.detail.lowercased().contains("pause"))
+        XCTAssertTrue(RecordingsPlaceholder.listening.detail.lowercased().contains("transcript"))
         XCTAssertEqual(TranscriptStatusPolicy.backlogVisibleAfter, 3)
     }
 

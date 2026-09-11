@@ -12,10 +12,9 @@ struct RecordingDetail: View {
     @ObservedObject var state: AppState
     let recording: MeetingRecordingMetadata
     @ObservedObject var player: RecordingPlayer
+    let onRename: () -> Void
 
-    @State private var title = ""
     @State private var showsInfo = false
-    @FocusState private var isEditingTitle: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,16 +32,14 @@ struct RecordingDetail: View {
         }
         .onAppear(perform: load)
         .onChange(of: recording.id) { _, _ in load() }
-        .onChange(of: recording.title) { _, new in if !isEditingTitle { title = new ?? "" } }
         .onKeyPress(.space) {
-            guard !isEditingTitle else { return .ignored }
             player.toggle()
             return .handled
         }
         .toolbar {
             ToolbarItemGroup {
                 Menu("More") {
-                    Button("Rename…") { isEditingTitle = true }
+                    Button("Rename…", action: onRename)
                     Button("Save Transcript…") { saveTranscript() }
                         .disabled(state.transcript(for: recording.id).isEmpty)
                     Button("Save Audio…") { saveAudio() }
@@ -68,19 +65,17 @@ struct RecordingDetail: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
-            TextField(
-                "Title",
-                text: $title,
-                prompt: Text(RecordingsPlaceholder.defaultTitle(for: recording.startedAt)).foregroundStyle(.primary)
-            )
-            .textFieldStyle(.plain)
-            .font(.title2.weight(.semibold))
-            .focused($isEditingTitle)
-            .onSubmit { commitTitle() }
-            .onChange(of: isEditingTitle) { _, editing in if !editing { commitTitle() } }
-            .accessibilityLabel("Title")
-            .accessibilityHint("Edit the name, then press Return to save")
-            .help("Rename this recording")
+            HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.inline) {
+                Text(recording.title ?? RecordingsPlaceholder.defaultTitle(for: recording.startedAt))
+                    .font(.title2.weight(.semibold))
+                    .lineLimit(2)
+                Button("Rename", systemImage: "pencil", action: onRename)
+                    .buttonStyle(.borderless)
+                    .font(.callout)
+                    .fixedSize()
+                    .help("Rename this recording")
+                    .accessibilityIdentifier("rename-recording")
+            }
 
             Text(recording.title == nil
                  ? RecordingTime.brief(recording.duration)
@@ -169,7 +164,6 @@ struct RecordingDetail: View {
     }
 
     private func load() {
-        title = recording.title ?? ""
         state.loadTranscript(recording.id)
         player.load(id: recording.id, url: state.recordingAudioURL(recording.id))
     }
@@ -189,12 +183,6 @@ struct RecordingDetail: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         state.exportAudio(recording.id, to: url)
     }
-
-    private func commitTitle() {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed != (recording.title ?? "") else { return }
-        state.renameRecording(recording.id, title: trimmed)
-    }
 }
 
 /// The live document. The shared transport remains visible outside this pane.
@@ -208,7 +196,7 @@ struct LiveRecordingDetail: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .padding(GlassTokens.Space.page)
-                    .accessibilityLabel(RecordingsPlaceholder.listening.title)
+                    .accessibilityLabel(state.meetingState == .paused ? "Recording paused" : RecordingsPlaceholder.listening.title)
                     .accessibilityValue(RecordingsPlaceholder.listening.detail)
                 Spacer(minLength: 0)
             } else {

@@ -6,13 +6,13 @@
     <description>OpenRamble updates</description>
     <language>en</language>
     <item>
-      <title>0.27.2</title>
-      <pubDate>Fri, 11 Sep 2026 18:02:11 +0300</pubDate>
-      <sparkle:version>61</sparkle:version>
-      <sparkle:shortVersionString>0.27.2</sparkle:shortVersionString>
+      <title>0.27.3</title>
+      <pubDate>Fri, 11 Sep 2026 19:22:19 +0300</pubDate>
+      <sparkle:version>62</sparkle:version>
+      <sparkle:shortVersionString>0.27.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description>&lt;h2&gt;A clearer recordings window&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Copy the entire transcript while a recording is still running, including the latest transcribed words.&lt;/li&gt;&lt;li&gt;Find recordings in a compact list grouped by day, without repeated Meeting labels. Recordings started within the same minute show seconds to tell them apart.&lt;/li&gt;&lt;li&gt;Control a recording from one Liquid Glass bar with its time, audio levels, pause, and a clearly labelled Stop button.&lt;/li&gt;&lt;li&gt;Read a quieter transcript with grouped source headings. Scroll back without losing your place as new words arrive, then use Jump to Latest to follow the conversation again.&lt;/li&gt;&lt;li&gt;Use Copy Transcript and More instead of a row of unexplained icons. Save, rename, recording details, Finder, and Trash are under More.&lt;/li&gt;&lt;li&gt;Play from a timestamp while keeping transcript text available for selection. Playback controls take up one compact row.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.2/OpenRamble-0.27.2.dmg" length="6726999" type="application/octet-stream" sparkle:edSignature="wYdMDNAdpGZVC6p/9RI9ljm/zpScm/EdoMndHZctMW8H6Ofv8aI7wn99UNRrE+/Btt6VjfTVSxl0yH2RpxEiBg==" />
+      <description>&lt;h2&gt;Easier recording names and controls&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Rename a recording with the visible Rename button beside its title, by right-clicking it in the list, or by pressing Return on a selected recording. Enter saves, Escape cancels, and an empty name restores the date.&lt;/li&gt;&lt;li&gt;Pause and resume recordings from the menu bar. The recording&amp;#x27;s status takes priority over the idle dictation hint, and starting or saving no longer offers an ineffective Start button.&lt;/li&gt;&lt;li&gt;A requested pause no longer polls stopped audio sources or triggers missing-audio warnings. Resuming gives both channels time to deliver sound again.&lt;/li&gt;&lt;li&gt;Updating or renaming recordings no longer scans every audio file to calculate an unused library-size total. Individual recording sizes remain available in Recording Details.&lt;/li&gt;&lt;li&gt;Clearer microphone, shortcut and transcript explanations across Recordings, Settings and first-time setup.&lt;/li&gt;&lt;/ul&gt;</description>
+      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.3/OpenRamble-0.27.3.dmg" length="6204442" type="application/octet-stream" sparkle:edSignature="Frvs6xIgo9LkOvdyulpQwsTw6REn7OgWpbFbjs1ppSGy1KSn0fICOFPtgxfnbsRVT/pkI/7qZrVab2sqmpJeCw==" />
     </item>
   </channel>
 </rss>

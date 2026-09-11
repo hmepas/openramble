@@ -19,16 +19,41 @@ struct RecordingsWindow: View {
     @State private var selection: UUID?
 
     var body: some View {
-        NavigationSplitView {
-            RecordingsList(state: state, selection: $selection)
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 440)
-                .toolbarBackground(.visible, for: .windowToolbar)
-        } detail: {
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            NavigationSplitView {
+                RecordingsList(state: state, selection: $selection)
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 360)
+                    .toolbarBackground(.visible, for: .windowToolbar)
+            } detail: {
+                detail
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.background)
+                    .clipped()
+            }
+            VStack(spacing: GlassTokens.Space.inline) {
+                if state.isRecordingInProgress { CaptureHealthStrip(state: state) }
+                RecordBar(state: state)
+                    .padding(.horizontal, GlassTokens.Space.stack)
+                    .padding(.bottom, GlassTokens.Space.stack)
+                    .padding(.top, GlassTokens.Space.inline)
+            }
         }
         .frame(minWidth: 860, minHeight: 560)
         .navigationTitle("Recordings")
+        .glassWindowBackground()
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Copy Transcript") {
+                    if let selection { state.copyTranscript(selection) }
+                }
+                .help("Copy all text transcribed so far")
+                .accessibilityIdentifier("copy-transcript")
+                .disabled(selection.map { state.transcript(for: $0).isEmpty } ?? true)
+            }
+        }
+        .onChange(of: selection) { _, id in
+            if id != player.loadedID { player.pause() }
+        }
         .sheet(isPresented: Binding(
             get: { state.isSystemAudioIntroPresented },
             set: { if !$0 { state.dismissSystemAudioIntro() } }
@@ -60,8 +85,10 @@ struct RecordingsWindow: View {
     private var detail: some View {
         if let live = state.liveRecording, selection == live.id {
             LiveRecordingDetail(state: state)
+                .id(live.id)
         } else if let selection, let recording = state.recordings.first(where: { $0.id == selection }) {
             RecordingDetail(state: state, recording: recording, player: player)
+                .id(recording.id)
         } else {
             RecordingsPlaceholderView(
                 placeholder: state.recordings.isEmpty && state.liveRecording == nil

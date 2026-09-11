@@ -14,6 +14,7 @@ struct RecordingDetail: View {
     @ObservedObject var player: RecordingPlayer
 
     @State private var title = ""
+    @State private var showsInfo = false
     @FocusState private var isEditingTitle: Bool
 
     var body: some View {
@@ -40,35 +41,27 @@ struct RecordingDetail: View {
         }
         .toolbar {
             ToolbarItemGroup {
-                Button {
-                    state.copyTranscript(recording.id)
-                } label: {
-                    Label("Copy Transcript", systemImage: "doc.on.doc")
-                }
-                .help("Copy the transcript")
-                .disabled(state.transcript(for: recording.id).isEmpty)
-                Menu {
+                Menu("More") {
+                    Button("Rename…") { isEditingTitle = true }
                     Button("Save Transcript…") { saveTranscript() }
                         .disabled(state.transcript(for: recording.id).isEmpty)
                     Button("Save Audio…") { saveAudio() }
-                        .disabled(state.recordingAudioURL(recording.id) == nil)
-                } label: {
-                    Label("Save", systemImage: "square.and.arrow.down")
+                        .disabled(state.recordingAudioURL(recording.id) == nil || state.audioExportProgress != nil)
+                    Divider()
+                    Button("Show in Finder") { state.revealRecording(recording.id) }
+                    Button("Recording Details…") { showsInfo = true }
+                    Divider()
+                    Button("Move to Trash", role: .destructive) { state.trashRecording(recording.id) }
                 }
-                .help("Save the transcript or the audio")
-                .disabled(state.audioExportProgress != nil)
-                Button {
-                    state.revealRecording(recording.id)
-                } label: {
-                    Label("Show in Finder", systemImage: "folder")
+                .help("Recording details and actions")
+                .popover(isPresented: $showsInfo) {
+                    VStack(alignment: .leading, spacing: GlassTokens.Space.inline) {
+                        Text("Recording Details").font(.headline)
+                        Text(metadataLine).font(.callout).textSelection(.enabled)
+                    }
+                    .padding(GlassTokens.Space.section)
+                    .frame(width: 320)
                 }
-                .help("Show the audio file in Finder")
-                Button(role: .destructive) {
-                    state.trashRecording(recording.id)
-                } label: {
-                    Label("Move to Trash", systemImage: "trash")
-                }
-                .help("Move this recording to the Trash")
             }
         }
     }
@@ -76,8 +69,9 @@ struct RecordingDetail: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
             TextField(
-                RecordingsPlaceholder.defaultTitle(for: recording.startedAt),
-                text: $title
+                "Title",
+                text: $title,
+                prompt: Text(RecordingsPlaceholder.defaultTitle(for: recording.startedAt)).foregroundStyle(.primary)
             )
             .textFieldStyle(.plain)
             .font(.title2.weight(.semibold))
@@ -85,9 +79,13 @@ struct RecordingDetail: View {
             .onSubmit { commitTitle() }
             .onChange(of: isEditingTitle) { _, editing in if !editing { commitTitle() } }
             .accessibilityLabel("Title")
-            .accessibilityHint("Press Return to rename")
+            .accessibilityHint("Edit the name, then press Return to save")
+            .help("Rename this recording")
 
-            Text(metadataLine)
+            Text(recording.title == nil
+                 ? RecordingTime.brief(recording.duration)
+                 : recording.startedAt.formatted(date: .long, time: .shortened)
+                    + " · " + RecordingTime.brief(recording.duration))
                 .font(.system(size: GlassTokens.Label.footnote))
                 .foregroundStyle(.secondary)
         }
@@ -199,74 +197,25 @@ struct RecordingDetail: View {
     }
 }
 
-/// The recording in progress, in the detail column: the time, the meter,
-/// and the controls. No scrubber and no transport — you cannot seek what has
-/// not finished, and playing a recording into the microphone that is
-/// recording it is a feedback loop.
+/// The live document. The shared transport remains visible outside this pane.
 struct LiveRecordingDetail: View {
     @ObservedObject var state: AppState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: GlassTokens.Space.section) {
-                Text(RecordingTime.clock(state.liveDuration))
-                    .font(.system(size: 34, weight: .light, design: .rounded))
-                    .monospacedDigit()
-                    .accessibilityLabel(state.meetingState == .paused ? "Paused" : "Recording")
-                    .accessibilityValue(RecordingTime.spoken(state.liveDuration))
-                LiveLevelMeters(
-                    levels: state.liveLevels,
-                    isPaused: state.meetingState == .paused,
-                    showsOthers: state.liveRecording?.isMeeting ?? false,
-                    othersDegraded: state.liveCaptureHealth.marksRecordingDegraded,
-                    youDegraded: state.liveMicrophoneHealth.marksRecordingDegraded
-                )
-                .frame(maxWidth: 300, minHeight: (state.liveRecording?.isMeeting ?? false) ? 52 : 28)
-                Spacer()
-                Text(liveLine)
-                    .font(.system(size: GlassTokens.Label.footnote))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, GlassTokens.Space.page)
-            .padding(.top, GlassTokens.Space.section)
-            .padding(.bottom, GlassTokens.Space.stack)
-            CaptureHealthStrip(state: state)
-                .padding(.bottom, GlassTokens.Space.stack)
-            if state.liveRecording?.isMeeting ?? false,
-               state.liveCaptureHealth.title == nil,
-               state.liveMicrophoneHealth.title == nil {
-                // No processing beats this. On speakers the other side reaches
-                // the microphone and has to be told apart from the person;
-                // on headphones there is nothing to tell apart.
-                Text("On speakers, the Mac's own audio reaches your microphone. Headphones keep the two sides apart.")
-                    .font(.system(size: GlassTokens.Label.footnote))
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, GlassTokens.Space.page)
-                    .padding(.bottom, GlassTokens.Space.stack)
-            }
-            Divider()
             if state.liveTranscript.isEmpty {
                 Text(RecordingsPlaceholder.listening.detail)
                     .font(.callout)
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, GlassTokens.Space.page)
-                    .padding(.top, GlassTokens.Space.section)
+                    .foregroundStyle(.secondary)
+                    .padding(GlassTokens.Space.page)
                     .accessibilityLabel(RecordingsPlaceholder.listening.title)
                     .accessibilityValue(RecordingsPlaceholder.listening.detail)
                 Spacer(minLength: 0)
             } else {
-                TranscriptView(utterances: state.liveTranscript)
+                TranscriptView(utterances: state.liveTranscript, followsLive: true)
             }
-            Divider()
             TranscriptStatusLine(state: state)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var liveLine: String {
-        if state.meetingState == .paused { return "Paused" }
-        return (state.liveRecording?.isMeeting ?? false)
-            ? "Recording you and the other side"
-            : "Recording your microphone"
     }
 }

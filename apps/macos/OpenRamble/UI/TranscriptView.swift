@@ -1,37 +1,95 @@
 import DictationCore
 import SwiftUI
 
-/// The transcript as paragraphs, one full-measure column.
-///
-/// Not two lanes — at 400 pt each is below a comfortable measure and one side
-/// talking for three minutes leaves the other ragged and empty. Not bubbles —
-/// this is a document to read, search and export, not a chat to be in. Each
-/// paragraph carries its speaker in a gutter, and the person's own turns get
-/// a rail on the leading edge: a positional cue, so the two sides stay
-/// distinguishable in greyscale and under Increase Contrast.
+/// A reading column with sticky audio-source headings and explicit playback targets.
 struct TranscriptView: View {
     let utterances: [MeetingUtterance]
     var currentTime: TimeInterval?
     var onSeek: ((TimeInterval) -> Void)?
+    var followsLive = false
 
-    private var ordered: [MeetingUtterance] {
-        utterances.sorted { $0.start < $1.start }
-    }
+    @State private var follow = TranscriptFollowState()
+    @State private var contentHeight: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let bottomID = "transcript-bottom"
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
-                ForEach(ordered) { utterance in
-                    TranscriptTurnView(
-                        utterance: utterance,
-                        isCurrent: isCurrent(utterance),
-                        onTap: onSeek.map { seek in { seek(utterance.start) } }
-                    )
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    ForEach(TranscriptSection.make(utterances)) { section in
+                        Section {
+                            ForEach(section.utterances) { utterance in
+                                TranscriptTurnView(
+                                    utterance: utterance,
+                                    isCurrent: isCurrent(utterance),
+                                    onTap: onSeek.map { seek in { seek(utterance.start) } }
+                                )
+                                .id(utterance.id)
+                            }
+                        } header: {
+                            HStack(spacing: GlassTokens.Space.inline) {
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(section.channel == .microphone ? Color.accentColor : .secondary)
+                                    .frame(width: 3, height: 12)
+                                    .accessibilityHidden(true)
+                                Text(MeetingTranscriptFormatter.defaultNames[section.channel] ?? section.channel.rawValue)
+                                    .font(.callout.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                            }
+                            .padding(.vertical, GlassTokens.Space.inline)
+                            .padding(.horizontal, GlassTokens.Space.inline)
+                            .background(.background)
+                        }
+                    }
+                    Color.clear.frame(height: 1).id(bottomID)
+                }
+                .frame(maxWidth: 748)
+                .padding(.horizontal, GlassTokens.Space.section)
+                .padding(.vertical, GlassTokens.Space.inline)
+                .frame(maxWidth: .infinity)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: TranscriptHeightKey.self, value: geometry.size.height)
+                    }
                 }
             }
-            .padding(.horizontal, GlassTokens.Space.page)
-            .padding(.vertical, GlassTokens.Space.section)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background)
+            .onPreferenceChange(TranscriptHeightKey.self) { contentHeight = $0 }
+            .modifier(TranscriptScrollTracking { distance in
+                if followsLive { follow.userScrolled(distanceFromBottom: distance) }
+            })
+            .overlay(alignment: .bottom) {
+                if followsLive && !follow.followsLatest {
+                    Button {
+                        follow.returnToLatest()
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: GlassTokens.Motion.surfaceChange)) {
+                            proxy.scrollTo(bottomID, anchor: .bottom)
+                        }
+                    } label: {
+                        Label("Jump to Latest", systemImage: "arrow.down")
+                            .font(.callout.weight(.medium))
+                            .padding(.horizontal, GlassTokens.Space.stack)
+                            .padding(.vertical, GlassTokens.Space.inline)
+                    }
+                    .buttonStyle(.plain)
+                    .glassSurface(Capsule())
+                    .padding(.bottom, GlassTokens.Space.inline)
+                }
+            }
+            .onAppear {
+                if followsLive { proxy.scrollTo(bottomID, anchor: .bottom) }
+            }
+            .onChange(of: utterances) { _, _ in
+                if followsLive && follow.followsLatest {
+                    proxy.scrollTo(bottomID, anchor: .bottom)
+                }
+            }
+            .onChange(of: contentHeight) { _, _ in
+                // Lazy paragraph heights settle after the utterance update. Follow the laid-out bottom too.
+                if followsLive && follow.followsLatest { proxy.scrollTo(bottomID, anchor: .bottom) }
+            }
         }
     }
 
@@ -39,6 +97,11 @@ struct TranscriptView: View {
         guard let currentTime else { return false }
         return currentTime >= utterance.start && currentTime < utterance.end
     }
+}
+
+private struct TranscriptHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 struct TranscriptTurnView: View {
@@ -53,11 +116,18 @@ struct TranscriptTurnView: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.inline) {
-            Text(speaker)
-                .font(.system(size: GlassTokens.Label.sectionHeader, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 64, alignment: .leading)
+        HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.stack) {
+            Group {
+                if let onTap {
+                    Button(action: onTap) { timestamp }
+                        .buttonStyle(.plain)
+                        .help("Play from " + RecordingTime.clock(utterance.start))
+                        .accessibilityLabel("Play from " + RecordingTime.spoken(utterance.start))
+                } else {
+                    timestamp
+                }
+            }
+            .frame(minWidth: 44, alignment: .trailing)
             Group {
                 if utterance.isFailed {
                     Text("Couldn't transcribe this part")
@@ -68,35 +138,28 @@ struct TranscriptTurnView: View {
                         .textSelection(.enabled)
                 }
             }
-            .font(.body)
+            .font(.system(size: 15))
+            .lineSpacing(4)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            Text(RecordingTime.clock(utterance.start))
-                .font(.system(size: GlassTokens.Label.footnote))
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
+            .accessibilityLabel(speaker + ": " + (utterance.isFailed ? "Couldn't transcribe this part" : utterance.text))
         }
-        .padding(.vertical, GlassTokens.Space.tight)
+        .padding(.vertical, GlassTokens.Space.inline)
         .padding(.horizontal, GlassTokens.Space.inline)
-        .overlay(alignment: .leading) {
-            if utterance.channel == .microphone {
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(contrast == .increased ? Color.primary.opacity(0.42) : Color.accentColor)
-                    .frame(width: 2)
-                    .padding(.vertical, GlassTokens.Space.tight)
-            }
-        }
         .background(
-            isCurrent ? Color.accentColor.opacity(contrast == .increased ? 0.3 : 0.12) : .clear,
+            isCurrent ? Color.accentColor.opacity(contrast == .increased ? 0.3 : 0.10) : .clear,
             in: RoundedRectangle(cornerRadius: GlassTokens.Radius.chip, style: .continuous)
         )
-        .contentShape(Rectangle())
-        .onTapGesture { onTap?() }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(speaker)
-        .accessibilityValue(utterance.isFailed ? "Couldn't transcribe this part" : utterance.text)
+        .accessibilityElement(children: .contain)
         .accessibilityAddTraits(isCurrent ? .isSelected : [])
-        .accessibilityAction(named: "Play from here") { onTap?() }
+    }
+
+    private var timestamp: some View {
+        Text(RecordingTime.clock(utterance.start))
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .fixedSize()
     }
 }
 

@@ -2,83 +2,85 @@ import DictationAudio
 import DictationCore
 import SwiftUI
 
-/// The recordings, newest first, with the one in progress pinned on top and
-/// the record button beneath — never scrolling away.
+/// Newest first, grouped by local day. The recording in progress stays pinned above the archive.
 struct RecordingsList: View {
     @ObservedObject var state: AppState
     @Binding var selection: UUID?
 
     var body: some View {
-        VStack(spacing: 0) {
-            List(selection: $selection) {
-                if let live = state.liveRecording {
-                    LiveRecordingRow(state: state)
-                        .tag(live.id)
-                }
-                ForEach(state.recordings) { recording in
-                    RecordingRow(recording: recording)
-                        .tag(recording.id)
+        List(selection: $selection) {
+            if let live = state.liveRecording {
+                LiveRecordingRow(state: state)
+                    .tag(live.id)
+                    .listRowSeparator(.hidden)
+            }
+            ForEach(RecordingDayGroup.make(state.recordings)) { group in
+                Section {
+                    ForEach(group.recordings) { recording in
+                        RecordingRow(recording: recording, showsSeconds: group.needsSeconds(for: recording))
+                            .tag(recording.id)
+                            .listRowSeparator(.hidden)
+                    }
+                } header: {
+                    Text(group.title)
+                        .font(.caption.weight(.medium))
+                        .textCase(nil)
+                        .padding(.top, GlassTokens.Space.inline)
                 }
             }
-            .listStyle(.inset)
-            .onDeleteCommand {
-                guard let selection, let recording = state.recordings.first(where: { $0.id == selection }) else {
-                    return
-                }
-                state.trashRecording(recording.id)
-            }
-            Divider()
-            RecordBar(state: state)
+        }
+        .listStyle(.sidebar)
+        .onDeleteCommand {
+            guard let selection, state.recordings.contains(where: { $0.id == selection }) else { return }
+            state.trashRecording(selection)
         }
     }
 }
 
 struct RecordingRow: View {
     let recording: MeetingRecordingMetadata
+    var showsSeconds = false
+
+    private var startTime: String {
+        let format = Date.FormatStyle.dateTime.hour().minute()
+        return recording.startedAt.formatted(showsSeconds ? format.second() : format)
+    }
+
+    private var warning: String? {
+        RecordingsPlaceholder.endNote(for: recording.endReason)
+            ?? RecordingsPlaceholder.degradedNote(for: recording)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(recording.title ?? RecordingsPlaceholder.defaultTitle(for: recording.startedAt))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.inline) {
+                Text(recording.title ?? startTime)
                     .font(.body)
                     .lineLimit(1)
-                Spacer(minLength: GlassTokens.Space.inline)
+                Spacer(minLength: GlassTokens.Space.tight)
                 Text(RecordingTime.clock(recording.duration))
-                    .font(.system(size: GlassTokens.Label.footnote))
+                    .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .fixedSize()
             }
-            HStack(spacing: GlassTokens.Space.tight) {
-                Image(systemName: glyph.name)
-                    .foregroundStyle(glyph.color)
-                    .font(.system(size: GlassTokens.Label.footnote))
-                    .accessibilityHidden(true)
-                // Untitled, the title already is the date; repeating it here
-                // read as a bug. The kind is the other thing worth a glance.
-                Text(recording.title == nil
-                    ? (recording.isMeeting ? "Meeting" : "Voice note")
-                    : recording.startedAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.system(size: GlassTokens.Label.footnote))
+            if recording.title != nil {
+                Text(startTime)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if let warning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(StatusColorRole.attention.color)
+                    .lineLimit(2)
             }
         }
         .padding(.vertical, GlassTokens.Space.tight)
+        .help(recording.startedAt.formatted(date: .complete, time: .standard))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(recording.title ?? RecordingsPlaceholder.defaultTitle(for: recording.startedAt))
         .accessibilityValue(accessibilityValue)
-    }
-
-    /// One glyph, three meanings, and colour never load-bearing on its own.
-    private var glyph: (name: String, color: Color) {
-        switch recording.endReason {
-        case .crashRecovered, .diskFull, .writeFailed:
-            return ("exclamationmark.triangle.fill", StatusColorRole.attention.color)
-        default:
-            if RecordingsPlaceholder.degradedNote(for: recording) != nil {
-                return ("exclamationmark.triangle.fill", StatusColorRole.attention.color)
-            }
-            return recording.isMeeting ? ("person.2.wave.2", .secondary) : ("mic", .secondary)
-        }
     }
 
     private var accessibilityValue: String {
@@ -93,42 +95,26 @@ struct RecordingRow: View {
     }
 }
 
-/// The recording in progress: red dot and elapsed time. The meters live in
-/// the detail header, where they have room and labels; a 280-point row
-/// crushed them into a dashed line.
 struct LiveRecordingRow: View {
     @ObservedObject var state: AppState
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: GlassTokens.Space.tight) {
+        HStack(spacing: GlassTokens.Space.inline) {
             Circle()
                 .fill(state.meetingState == .paused ? Color.secondary : StatusColorRole.recording.color)
-                .frame(width: 8, height: 8)
+                .frame(width: 7, height: 7)
                 .accessibilityHidden(true)
             Text(state.meetingState == .paused ? "Paused" : "Recording")
                 .font(.body.weight(.medium))
-            Spacer(minLength: GlassTokens.Space.inline)
-            Text(RecordingTime.clock(state.liveDuration))
-                .font(.system(size: GlassTokens.Label.footnote))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
         }
-        .padding(.vertical, GlassTokens.Space.tight)
+        .padding(.vertical, GlassTokens.Space.inline)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(state.meetingState == .paused ? "Recording, paused" : "Recording")
         .accessibilityValue(RecordingTime.spoken(state.liveDuration))
     }
 }
 
-/// The rolling meters, fed from the recorder's level updates: one for the
-/// microphone, and one for the other side when it is being recorded.
-///
-/// This is the answer to a tap that fails by succeeding. A person must never
-/// learn after ninety minutes that only their own voice was captured; the
-/// Others meter that never moves says so in the first ten seconds, and turns
-/// orange once the recorder is sure. `RecordingWaveform` is reused untouched:
-/// it draws silence as a visible 1 pt line rather than an empty box, which
-/// is what makes a dead source look dead instead of like a layout gap.
+/// Both physical sources stay visible while browsing an older recording as well.
 struct LiveLevelMeters: View {
     let levels: MeetingCapture.Levels
     let isPaused: Bool
@@ -139,18 +125,10 @@ struct LiveLevelMeters: View {
     @State private var others: [Float] = Array(repeating: 0, count: 24)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: GlassTokens.Space.tight) {
-            meter(
-                "You",
-                samples: you,
-                color: isPaused ? .secondary : (youDegraded ? StatusColorRole.attention.color : StatusColorRole.recording.color)
-            )
+        HStack(spacing: GlassTokens.Space.section) {
+            meter("You", samples: you, color: youDegraded ? StatusColorRole.attention.color : .accentColor)
             if showsOthers {
-                meter(
-                    "Others",
-                    samples: others,
-                    color: isPaused ? .secondary : (othersDegraded ? StatusColorRole.attention.color : StatusColorRole.recording.color)
-                )
+                meter("Others", samples: others, color: othersDegraded ? StatusColorRole.attention.color : .secondary)
             }
         }
         .onChange(of: levels) { _, levels in
@@ -163,12 +141,13 @@ struct LiveLevelMeters: View {
     }
 
     private func meter(_ title: String, samples: [Float], color: Color) -> some View {
-        HStack(spacing: GlassTokens.Space.tight) {
+        HStack(spacing: GlassTokens.Space.inline) {
             Text(title)
-                .font(.system(size: GlassTokens.Label.sectionHeader, weight: .semibold))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
-                .frame(width: 44, alignment: .leading)
-            RecordingWaveform(samples: samples, color: color)
+                .fixedSize()
+            RecordingWaveform(samples: samples, color: isPaused ? .secondary : color)
+                .frame(width: 76, height: 22)
         }
     }
 }

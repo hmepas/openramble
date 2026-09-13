@@ -2,7 +2,7 @@ import AVFoundation
 import DictationAudio
 import XCTest
 
-/// What leaves the Mac has to be small, still stereo, and complete.
+/// What leaves the Mac has to be small, centered, and complete.
 final class MeetingAudioExporterTests: XCTestCase {
     private var directory: URL!
 
@@ -28,14 +28,14 @@ final class MeetingAudioExporterTests: XCTestCase {
         return directory.appending(path: "audio.wav")
     }
 
-    func testAnExportIsStereoTheSameLengthAndFarSmaller() throws {
+    func testAnExportIsCenteredTheSameLengthAndFarSmaller() throws {
         let source = try writeRecording()
         let destination = directory.appending(path: "export.m4a")
         var lastProgress: Double = 0
         try MeetingAudioExporter.export(from: source, to: destination, progress: { lastProgress = $0 })
 
         let exported = try AVAudioFile(forReading: destination)
-        XCTAssertEqual(exported.processingFormat.channelCount, 2)
+        XCTAssertEqual(exported.processingFormat.channelCount, 1, "speech should play in both ears")
         XCTAssertEqual(
             Double(exported.length) / exported.processingFormat.sampleRate,
             5,
@@ -46,6 +46,34 @@ final class MeetingAudioExporterTests: XCTestCase {
         let exportedBytes = try FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int ?? 0
         XCTAssertLessThan(exportedBytes * 4, sourceBytes, "AAC at 32 kbps is a fraction of 16 kHz stereo PCM")
         XCTAssertEqual(lastProgress, 1)
+    }
+
+    func testEitherSourceAndBothTogetherAreAudibleInTheExport() throws {
+        let writer = MeetingWriter(directory: directory)
+        try writer.open()
+        let tone = (0..<16_000).map { Float(sin(Double($0) * 0.05)) * 0.4 }
+        let silence = [Float](repeating: 0, count: tone.count)
+        try writer.append(microphone: tone, system: silence)
+        try writer.append(microphone: silence, system: tone)
+        try writer.append(microphone: tone, system: tone)
+        try writer.finish()
+        let destination = directory.appending(path: "both.m4a")
+        try MeetingAudioExporter.export(from: writer.audioURL, to: destination)
+
+        let output = try AVAudioFile(forReading: destination)
+        XCTAssertEqual(output.processingFormat.channelCount, 1)
+        for second in 0..<3 {
+            // Away from AAC priming and the transitions between speakers.
+            output.framePosition = AVAudioFramePosition(second * 16_000 + 4_000)
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: output.processingFormat, frameCapacity: 4_000))
+            try output.read(into: buffer)
+            let samples = try XCTUnwrap(buffer.floatChannelData)[0]
+            let energy = (0..<Int(buffer.frameLength)).reduce(Float(0)) { $0 + samples[$1] * samples[$1] }
+            XCTAssertGreaterThan(sqrt(energy / Float(buffer.frameLength)), 0.1, "source missing at second \(second)")
+        }
+        // Exporting must not change the source tracks the recognizer reads.
+        let original = try AVAudioFile(forReading: writer.audioURL)
+        XCTAssertEqual(original.processingFormat.channelCount, 2)
     }
 
     /// A half-written export that plays for ten minutes of a two-hour

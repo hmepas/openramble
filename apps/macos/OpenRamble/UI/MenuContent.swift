@@ -65,7 +65,7 @@ struct MenuContent: View {
                 // Activation alone is not enough — the window does not exist
                 // yet at this point and would open behind whatever the person
                 // was working in. See `WindowFronting`.
-                WindowFronting.raiseOpenedWindow()
+                WindowFronting.raiseOpenedWindow(id: "onboarding")
             }
 
         case .insertLastDictation:
@@ -156,16 +156,16 @@ struct MenuContent: View {
         case .openRecordings:
             Button("Recordings…") {
                 openWindow(id: RecordingsWindow.windowID)
-                WindowFronting.raiseOpenedWindow()
+                WindowFronting.raiseOpenedWindow(id: RecordingsWindow.windowID)
             }
-            .keyboardShortcut("0", modifiers: .command)
+            .keyboardShortcut("r", modifiers: .command)
 
         case .settings:
             Button("Settings…") {
                 openWindow(id: "settings")
                 // The Settings window is created after this action returns, so
                 // it has to be raised once it exists. See `WindowFronting`.
-                WindowFronting.raiseOpenedWindow()
+                WindowFronting.raiseOpenedWindow(id: "settings")
             }
             .keyboardShortcut(",", modifiers: .command)
 

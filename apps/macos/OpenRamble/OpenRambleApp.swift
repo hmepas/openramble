@@ -92,7 +92,7 @@ struct OpenRambleApp: App {
                 // does not work.
                 guard !onboardingCompleted else { return }
                 openWindow(id: "onboarding")
-                WindowFronting.raiseOpenedWindow()
+                WindowFronting.raiseOpenedWindow(id: "onboarding")
             }
             .onChange(of: state.isSystemAudioIntroPresented) { _, presented in
                 // The intro sheet lives on the Recordings window. The label
@@ -100,7 +100,7 @@ struct OpenRambleApp: App {
                 // global shortcut that needs the sheet can open it from here.
                 guard presented else { return }
                 openWindow(id: RecordingsWindow.windowID)
-                WindowFronting.raiseOpenedWindow()
+                WindowFronting.raiseOpenedWindow(id: RecordingsWindow.windowID)
             }
         }
 
@@ -134,15 +134,6 @@ struct OpenRambleApp: App {
         }
         .defaultSize(width: 1080, height: 720)
         .windowResizability(.contentMinSize)
-        .commands {
-            CommandGroup(after: .appSettings) {
-                Button("Recordings…") {
-                    openWindow(id: RecordingsWindow.windowID)
-                    WindowFronting.raiseOpenedWindow()
-                }
-                .keyboardShortcut("0", modifiers: .command)
-            }
-        }
 
         Window("Settings", id: Self.settingsWindowID) {
             SettingsView(state: state)
@@ -151,8 +142,16 @@ struct OpenRambleApp: App {
         .defaultSize(width: 780, height: 580)
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Button("Settings…") { openWindow(id: Self.settingsWindowID) }
-                    .keyboardShortcut(",", modifiers: .command)
+                Button("Settings…") {
+                    openWindow(id: Self.settingsWindowID)
+                    WindowFronting.raiseOpenedWindow(id: Self.settingsWindowID)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+                Button("Recordings…") {
+                    openWindow(id: RecordingsWindow.windowID)
+                    WindowFronting.raiseOpenedWindow(id: RecordingsWindow.windowID)
+                }
+                .keyboardShortcut("r", modifiers: .command)
             }
         }
     }

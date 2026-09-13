@@ -157,7 +157,7 @@ private struct GeneralSettings: View {
             } header: {
                 Text("Shortcut")
             } footer: {
-                Text("Hold the dictation key to speak, or double-press for hands-free dictation. Press once more to finish. The recording shortcut starts and stops a recording; it also reaches the app in front.")
+                Text("Hold the dictation key to speak, or double-press for hands-free dictation. Press once more to finish. Record starts and stops a recording from any app; choose a shortcut that your other apps don't use. ⌘R opens Recordings while OpenRamble is active.")
             }
 
             Section("Behavior") {

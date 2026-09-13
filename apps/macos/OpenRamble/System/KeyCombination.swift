@@ -29,10 +29,10 @@ public struct KeyCombination: Sendable, Equatable, Hashable {
         self.modifiers = modifiers.intersection(Self.allowedModifiers).rawValue
     }
 
-    /// The default recording shortcut: rare enough to ship on, unlike ⌘R.
-    public static let shiftCommandR = KeyCombination(
+    /// Record from another app without triggering its usual reload shortcut.
+    public static let controlCommandR = KeyCombination(
         keyCode: UInt16(kVK_ANSI_R),
-        modifiers: [.command, .shift]
+        modifiers: [.command, .control]
     )
 
     public var modifierFlags: NSEvent.ModifierFlags {

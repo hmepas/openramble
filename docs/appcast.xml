@@ -6,13 +6,13 @@
     <description>OpenRamble updates</description>
     <language>en</language>
     <item>
-      <title>0.27.3</title>
-      <pubDate>Fri, 11 Sep 2026 19:22:19 +0300</pubDate>
-      <sparkle:version>62</sparkle:version>
-      <sparkle:shortVersionString>0.27.3</sparkle:shortVersionString>
+      <title>0.27.4</title>
+      <pubDate>Sun, 13 Sep 2026 15:39:10 +0300</pubDate>
+      <sparkle:version>63</sparkle:version>
+      <sparkle:shortVersionString>0.27.4</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description>&lt;h2&gt;Easier recording names and controls&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Rename a recording with the visible Rename button beside its title, by right-clicking it in the list, or by pressing Return on a selected recording. Enter saves, Escape cancels, and an empty name restores the date.&lt;/li&gt;&lt;li&gt;Pause and resume recordings from the menu bar. The recording&amp;#x27;s status takes priority over the idle dictation hint, and starting or saving no longer offers an ineffective Start button.&lt;/li&gt;&lt;li&gt;A requested pause no longer polls stopped audio sources or triggers missing-audio warnings. Resuming gives both channels time to deliver sound again.&lt;/li&gt;&lt;li&gt;Updating or renaming recordings no longer scans every audio file to calculate an unused library-size total. Individual recording sizes remain available in Recording Details.&lt;/li&gt;&lt;li&gt;Clearer microphone, shortcut and transcript explanations across Recordings, Settings and first-time setup.&lt;/li&gt;&lt;/ul&gt;</description>
-      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.3/OpenRamble-0.27.3.dmg" length="6204442" type="application/octet-stream" sparkle:edSignature="Frvs6xIgo9LkOvdyulpQwsTw6REn7OgWpbFbjs1ppSGy1KSn0fICOFPtgxfnbsRVT/pkI/7qZrVab2sqmpJeCw==" />
+      <description>&lt;h2&gt;OpenRamble 0.27.4&lt;/h2&gt;&lt;p&gt;Recordings now play in both ears. Your microphone and the other side are mixed&lt;/p&gt;&lt;p&gt;to the center during playback and audio export, including for existing&lt;/p&gt;&lt;p&gt;recordings. The original source tracks remain separate for transcription.&lt;/p&gt;&lt;p&gt;Playback also resumes correctly if the audio device changes while paused.&lt;/p&gt;&lt;p&gt;The default recording shortcut is now **Control–Command–R**. Press it again to&lt;/p&gt;&lt;p&gt;finish. **Command–R** opens Recordings while OpenRamble is active. Custom&lt;/p&gt;&lt;p&gt;recording shortcuts are preserved.&lt;/p&gt;&lt;p&gt;Opening Recordings brings the library to the front even when Settings is&lt;/p&gt;&lt;p&gt;already open. Its command remains visible in the main app menu.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.4/OpenRamble-0.27.4.dmg" length="6226545" type="application/octet-stream" sparkle:edSignature="v/gSH6aHi1JVhgQaBcADnSaSNmARg1NjWdNoYBxBbm3OM4Ky7q9nFBFA1Y+wKK8fNljkFdE8omfkYkr7llO6DQ==" />
     </item>
   </channel>
 </rss>

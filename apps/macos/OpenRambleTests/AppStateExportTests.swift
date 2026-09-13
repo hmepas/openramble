@@ -133,7 +133,7 @@ final class AppStateExportTests: XCTestCase {
         try await waitUntil { state.audioExportProgress == nil }
 
         let exported = try AVAudioFile(forReading: url)
-        XCTAssertEqual(exported.processingFormat.channelCount, 2, "You in one ear, the other side in the other")
+        XCTAssertEqual(exported.processingFormat.channelCount, 1, "both voices play in both ears")
         XCTAssertEqual(Double(exported.length) / exported.processingFormat.sampleRate, 4, accuracy: 0.2)
         let source = try XCTUnwrap(state.recordingAudioURL(recording.id))
         let sourceBytes = try FileManager.default.attributesOfItem(atPath: source.path)[.size] as? Int ?? 0

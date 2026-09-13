@@ -270,8 +270,9 @@ actor FakeCapture: AudioCapturing {
     /// full circle of dictation without touching the real model.
     private var duration: TimeInterval = 2.0
 
-    private let file = FileManager.default.temporaryDirectory
-        .appending(path: "openramble-test-take-\(UUID().uuidString).wav")
+    private let file: URL
+
+    init(file: URL) { self.file = file }
 
     func setDuration(_ value: TimeInterval) { duration = value }
 
@@ -456,7 +457,7 @@ final class AppHarness {
     let copyMonitor = FakeShortcutMonitor()
     let recordingMonitor = FakeShortcutMonitor()
     let overlay = FakeOverlay()
-    let capture = FakeCapture()
+    let capture: FakeCapture
     let meetingCapture = FakeMeetingCapture()
     let announcer = FakeAnnouncer()
     /// How often the Settings pane for system audio was asked for.
@@ -484,6 +485,8 @@ final class AppHarness {
                 directoryHint: .isDirectory
             )
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        // Recovery state belongs to this harness, never the shared temp root.
+        capture = FakeCapture(file: try AppPaths(root: root).takes().appending(path: "test-take.wav"))
 
         suiteName = "is.waiwai.dictation.tests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {

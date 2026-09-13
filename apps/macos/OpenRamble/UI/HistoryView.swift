@@ -108,7 +108,7 @@ struct HistoryView: View {
             // Two stores, two promises. This one is bounded and about
             // dictation; the other keeps what the person recorded on purpose.
             // Said here so they never read as the same thing.
-            Text("Meetings and voice notes you record on purpose live in their own window: Recordings, ⌘0.")
+            Text("Meetings and voice notes you record on purpose live in their own window: Recordings, ⌘R.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

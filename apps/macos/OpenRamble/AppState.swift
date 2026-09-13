@@ -707,7 +707,7 @@ public final class AppState: ObservableObject {
 
     /// The shortcut that starts and stops a recording, or nothing.
     ///
-    /// Default is ⇧⌘R. Clearing it is Off — an empty defaults value, not a
+    /// Default is ⌃⌘R. Clearing it is Off — an empty defaults value, not a
     /// missing one, so the first launch and a deliberate clear stay different.
     @Published public var recordingShortcut: KeyCombination? {
         didSet {

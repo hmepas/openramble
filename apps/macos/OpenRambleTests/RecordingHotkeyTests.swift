@@ -37,14 +37,14 @@ final class RecordingHotkeyTests: XCTestCase {
 
     /// A fresh app already has a recording shortcut, so the first meeting
     /// does not require a trip through Settings.
-    func testTheDefaultIsShiftCommandR() {
+    func testTheDefaultIsControlCommandR() {
         let state = harness.makeState()
         XCTAssertEqual(
             state.recordingShortcut,
-            KeyCombination(keyCode: rKey, modifiers: [.command, .shift])
+            KeyCombination(keyCode: rKey, modifiers: [.command, .control])
         )
         XCTAssertEqual(state.recordingShortcut, SettingsDefaults.recordingShortcut)
-        XCTAssertEqual(state.recordingShortcut?.displayString, "⇧⌘R")
+        XCTAssertEqual(state.recordingShortcut?.displayString, "⌃⌘R")
     }
 
     /// An empty value is Off, and a missing key is the default — those two

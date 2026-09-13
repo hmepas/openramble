@@ -127,12 +127,12 @@ enum WindowFronting {
         NSApp.setActivationPolicy(onWindowsClosed?() ?? .accessory)
     }
 
-    /// Bring OpenRamble's windows forward as soon as one exists.
+    /// Bring the requested window forward as soon as it exists.
     ///
     /// The app is activated on every attempt, not only on success: a person
     /// who clicked a menu item expects OpenRamble to be the front app even in
     /// the fraction of a second before its window materializes.
-    static func raiseOpenedWindow(attempt: Int = 0) {
+    static func raiseOpenedWindow(id: String, attempt: Int = 0) {
         // The policy change is the part that works, and it is not decoration.
         //
         // Activation on macOS is cooperative: `activate` *asks* the app in
@@ -153,7 +153,10 @@ enum WindowFronting {
         NSApp.activate(ignoringOtherApps: true)
         observeWindowClosing()
 
-        switch WindowRaiser.step(windows: NSApp.windows, attempt: attempt) {
+        // Raising every window can cover the requested one with Settings.
+        // SwiftUI's scene ID stays stable even when the window title changes.
+        let windows = NSApp.windows.filter { $0.identifier?.rawValue == id }
+        switch WindowRaiser.step(windows: windows, attempt: attempt) {
         case .raised, .giveUp:
             return
         case .retry:
@@ -161,7 +164,7 @@ enum WindowFronting {
             // within the same cycle, and a repeating timer would outlive the
             // reason it exists.
             DispatchQueue.main.async {
-                raiseOpenedWindow(attempt: attempt + 1)
+                raiseOpenedWindow(id: id, attempt: attempt + 1)
             }
         }
     }

@@ -30,7 +30,7 @@ once. Earlier versions kept transcripts in memory only; this is a deliberate
 change, and it is the one thing this app stores that it previously did not.
 Nothing leaves the Mac either way.
 
-**Recordings** you make on purpose — in the Recordings window, ⌘0, or with ⇧⌘R — stay until
+**Recordings** you make on purpose — in the Recordings window, ⌘R, or with ⌃⌘R — stay until
 you delete them, with a transcript beside the audio. A recording captures your
 microphone and, when you allow it, whatever your Mac is playing — that is how
 the other people in a call get transcribed, labelled Others against your You.
@@ -48,14 +48,17 @@ that hold transient dictation audio are not.
 Use Rename beside a recording's title, or right-click it in the list, to give
 it a name. Return in the list also opens Rename; Enter saves and Escape cancels.
 An empty name restores the date. The menu bar can start, pause, resume and stop a recording.
+⌃⌘R starts or stops recording from any app; ⌘R opens Recordings while OpenRamble
+is active. Change the recording shortcut in Settings; existing custom shortcuts are kept.
 
 Nothing leaves this Mac on its own. Copy and Save hand a transcript or a
 recording to somewhere you chose: Copy puts the transcript on this Mac's
 clipboard, and Save writes a Markdown transcript or an m4a of the audio wherever
 you point it. What happens to a file after that is that app's business.
 The exported audio is AAC rather than the stored recording, which is about
-230 MB an hour and too large to send; it keeps the two sides on separate
-channels, so you still hear yourself on one and the other side on the other.
+230 MB an hour and too large to send. Playback and exported audio mix both
+voices to the center, so either source is heard in both ears. The original
+recording keeps the sources on separate channels for transcription.
 
 Recognition never uses the network. The following maintenance actions can:
 

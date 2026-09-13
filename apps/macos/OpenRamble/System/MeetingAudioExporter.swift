@@ -6,9 +6,8 @@ import Foundation
 /// A recording is stored as 16 kHz stereo PCM because that is what the
 /// recogniser reads and what keeps the two sides separable; two hours of it
 /// is about 460 MB, which no mail client will take. The same two hours as
-/// AAC at 32 kbps is about 29 MB and sounds the same for speech. The stereo
-/// layout is kept, so the export still plays with You in one ear and the
-/// other side in the other.
+/// AAC at 32 kbps is about 29 MB. Listening mixes both sources to mono so
+/// either voice plays in both ears; only the original keeps them separate.
 ///
 /// `AVAudioFile` is the whole implementation: it is the sanctioned way to
 /// read and write audio here, and `AVAssetExportSession` needs an `AVAsset`,
@@ -48,15 +47,20 @@ enum MeetingAudioExporter {
     ) throws {
         let input: AVAudioFile
         do {
-            input = try AVAudioFile(forReading: source)
+            input = try AVAudioFile(forReading: source, commonFormat: .pcmFormatFloat32, interleaved: false)
         } catch {
             throw Failure.unreadable(String(describing: error))
         }
         let format = input.processingFormat
+        guard let mono = AVAudioFormat(standardFormatWithSampleRate: format.sampleRate, channels: 1),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunkFrames),
+              let mixed = AVAudioPCMBuffer(pcmFormat: mono, frameCapacity: chunkFrames) else {
+            throw Failure.formatMismatch
+        }
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: format.sampleRate,
-            AVNumberOfChannelsKey: format.channelCount,
+            AVNumberOfChannelsKey: 1,
             AVEncoderBitRateKey: bitRate,
         ]
 
@@ -67,7 +71,7 @@ enum MeetingAudioExporter {
             throw Failure.unwritable(String(describing: error))
         }
         guard output.processingFormat.sampleRate == format.sampleRate,
-              output.processingFormat.channelCount == format.channelCount else {
+              output.processingFormat.channelCount == 1 else {
             try? FileManager.default.removeItem(at: destination)
             throw Failure.formatMismatch
         }
@@ -76,12 +80,20 @@ enum MeetingAudioExporter {
         do {
             while input.framePosition < input.length {
                 if isCancelled() { throw Failure.cancelled }
-                guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunkFrames) else {
-                    throw Failure.formatMismatch
-                }
                 try input.read(into: buffer)
                 guard buffer.frameLength > 0 else { break }
-                try output.write(from: buffer)
+                guard let channels = buffer.floatChannelData, let samples = mixed.floatChannelData?[0] else {
+                    throw Failure.formatMismatch
+                }
+                mixed.frameLength = buffer.frameLength
+                // Average, not sum: simultaneous voices must not clip.
+                let gain = 1 / Float(format.channelCount)
+                for frame in 0..<Int(buffer.frameLength) {
+                    var sum: Float = 0
+                    for channel in 0..<Int(format.channelCount) { sum += channels[channel][frame] }
+                    samples[frame] = sum * gain
+                }
+                try output.write(from: mixed)
                 progress(Double(input.framePosition) / Double(total))
             }
         } catch let failure as Failure {

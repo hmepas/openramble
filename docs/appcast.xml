@@ -6,13 +6,13 @@
     <description>OpenRamble updates</description>
     <language>en</language>
     <item>
-      <title>0.27.4</title>
-      <pubDate>Sun, 13 Sep 2026 15:39:10 +0300</pubDate>
-      <sparkle:version>63</sparkle:version>
-      <sparkle:shortVersionString>0.27.4</sparkle:shortVersionString>
+      <title>0.27.5</title>
+      <pubDate>Mon, 14 Sep 2026 17:28:49 +0300</pubDate>
+      <sparkle:version>64</sparkle:version>
+      <sparkle:shortVersionString>0.27.5</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description>&lt;h2&gt;OpenRamble 0.27.4&lt;/h2&gt;&lt;p&gt;Recordings now play in both ears. Your microphone and the other side are mixed&lt;/p&gt;&lt;p&gt;to the center during playback and audio export, including for existing&lt;/p&gt;&lt;p&gt;recordings. The original source tracks remain separate for transcription.&lt;/p&gt;&lt;p&gt;Playback also resumes correctly if the audio device changes while paused.&lt;/p&gt;&lt;p&gt;The default recording shortcut is now **Control–Command–R**. Press it again to&lt;/p&gt;&lt;p&gt;finish. **Command–R** opens Recordings while OpenRamble is active. Custom&lt;/p&gt;&lt;p&gt;recording shortcuts are preserved.&lt;/p&gt;&lt;p&gt;Opening Recordings brings the library to the front even when Settings is&lt;/p&gt;&lt;p&gt;already open. Its command remains visible in the main app menu.&lt;/p&gt;</description>
-      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.4/OpenRamble-0.27.4.dmg" length="6226545" type="application/octet-stream" sparkle:edSignature="v/gSH6aHi1JVhgQaBcADnSaSNmARg1NjWdNoYBxBbm3OM4Ky7q9nFBFA1Y+wKK8fNljkFdE8omfkYkr7llO6DQ==" />
+      <description>&lt;h2&gt;OpenRamble 0.27.5&lt;/h2&gt;&lt;p&gt;Opening Dictation History no longer makes the Settings sidebar disappear.&lt;/p&gt;&lt;p&gt;The history stays inside the window, with its controls visible and its text&lt;/p&gt;&lt;p&gt;below the title bar. Switching sections and resizing the window work with&lt;/p&gt;&lt;p&gt;both an empty history and a long list of dictations.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/mikwiseman/openramble/releases/download/v0.27.5/OpenRamble-0.27.5.dmg" length="6214961" type="application/octet-stream" sparkle:edSignature="HqdgNs7n9E9GxEZo41V6sbVMQq+3nhCww7ic7GUJ6YCBio5Qf8ZF87MXeA3JpwA1Avs3GaTmeKtHm7Fqo+SCCQ==" />
     </item>
   </channel>
 </rss>

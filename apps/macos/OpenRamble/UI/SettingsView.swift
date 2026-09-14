@@ -68,7 +68,10 @@ struct SettingsView: View {
             .scrollDisabled(true)
         } detail: {
             detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // A pane's ideal content size must not enlarge the split view
+                // beyond the window and push the sidebar offscreen.
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                .clipped()
                 .navigationTitle(pane.title)
         }
         .frame(minWidth: 720, idealWidth: 720, minHeight: 540, idealHeight: 540)

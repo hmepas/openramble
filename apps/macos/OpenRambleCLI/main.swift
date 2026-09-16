@@ -60,11 +60,19 @@ func resolveEngineDirectory(explicit: String?) async throws -> URL {
         .map { URL(fileURLWithPath: $0, isDirectory: true) }
     let layout = try ModelInstallLayout(manifest: manifest, root: root)
     let store = ModelStore(manifest: manifest, layout: layout)
-    guard await store.refreshState().isReady else {
+    switch await store.inspectInstalledState() {
+    case .ready:
+        return layout.engineDirectory
+    case .notInstalled:
         diagnostic("Model is not installed. Open OpenRamble and install it in Settings.")
         exit(69)
+    case let .repairRequired(reason):
+        diagnostic("Model is incomplete or damaged: \(reason). Finish installation or repair it in OpenRamble Settings.")
+        exit(69)
+    default:
+        diagnostic("Model is unavailable. Check OpenRamble Settings.")
+        exit(69)
     }
-    return layout.engineDirectory
 }
 
 do {
